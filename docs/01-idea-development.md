@@ -1,24 +1,62 @@
 # BoxTrack - Idea Development Documentation
 
-> DWWM end-of-year project (RNCP 37674) - Idea development & MVP definition phase.
-> This document covers Task 0 (team formation), Task 1 (brainstorming & idea evaluation),
-> and Task 2 (decision & refinement) for the selected MVP: **BoxTrack**.
+> **Portfolio Project - Team Formation, Brainstorming and MVP (Stage 1 - France)**
+> DWWM end-of-year project (RNCP 37674).
+> Covers Task 0 (team formation & roles definition), Task 1 (brainstorming & idea evaluation),
+> Task 2 (decision & refinement), and Task 3 (this documentation) for the selected MVP: **BoxTrack**.
 
 ---
 
 ## 1. Team Formation
 
+### 1.1 Initial Meeting & Team Overview
+
+An initial kickoff meeting was held between both members to introduce backgrounds, strengths, and
+interests before assigning any role, so that the technical split in section 1.2 reflects actual
+affinity rather than an arbitrary split.
+
 | | |
 |---|---|
 | **Team size** | 2 members |
-| **Members** | [Kevin Rigal] (krigal323@gmail.com), [Panaki Gillot] (gillotpanaki@gmail.com) |
-| **Roles** | Shared full-stack - both members work across front-end and back-end, alternating ownership by feature/sprint rather than by fixed layer. No permanent "front-only" / "back-only" split, to ensure both members cover all RNCP blocks individually. |
+| **Members** | Kevin Rigal (krigal323@gmail.com), Panaki Gillot (gillotpanaki@gmail.com) |
+| **Temporary Project Manager** | Kevin Rigal - coordinates planning and documentation, and keeps the Trello backlog groomed against the 10-week schedule during Stage 1-2. A coordination role, not a hierarchy: technical decisions are still made jointly, and the role can rotate in later stages if the team decides it should. |
 | **Client / Sponsor (commanditaire)** | Timothé Garde, owner of CrossFit LAB (Toulouse) |
-| **Communication tool** | Discord (daily check-ins, quick decisions, pair-programming voice calls) |
+
+### 1.2 Technical Roles & Rationale
+
+Both members are trained and evaluated as full-stack developers (RNCP 37674 requires each person to
+individually cover all 7 competency blocks), so neither is restricted to a single layer for the whole
+project. To avoid two people redundantly re-deciding the same UI or data questions, each carries a
+**lead** role on the side they showed stronger affinity for during the Stage 1 brainstorming (see
+[section 2.5](#25-front-end--back-end-split-during-this-phase) below):
+
+| Member | Technical role | Why this split |
+|---|---|---|
+| **Kevin Rigal** | Fullstack developer - **Front-end / UX lead** | Owned the UI-feasibility read on every candidate idea during brainstorming (screen sketches, `/screen` broadcast-view complexity). Leads the Figma prototype, the responsive CSS work, and the `/screen` broadcast view - the project's most demanding UI requirement. |
+| **Panaki Gillot** | Fullstack developer - **Back-end / Data lead** | Owned the data-model read on every candidate idea during brainstorming (entities, relations, RNCP C4/C5/C6 alignment). Leads the database schema, the REST API, and authentication (JWT/bcrypt). |
+
+Both members still implement across the stack on every sprint; when a decision needs a single owner
+to move fast, it defaults to the lead above.
+
+### 1.3 Communication, Collaboration & Working Norms
+
+| | |
+|---|---|
+| **Communication tool** | Discord (daily check-ins, constant communication, quick decisions, pair-programming voice calls) |
 | **Task tracking tool** | Trello (Kanban board: Backlog / To Do / In Progress / Review / Done, one card per user story) |
 | **Version control** | Git + GitHub (feature branches, pull requests reviewed by the other member before merge into `main`) |
 | **Documentation** | Markdown files in the repository (`/docs`), Figma for wireframes/prototype |
 | **Working norms** | Short daily async update on Discord (what was done / blockers / next), weekly planning session to groom the Trello backlog against the 10-week schedule, PR review required before merge, commit messages in English following Conventional Commits style |
+
+### 1.4 Stakeholders
+
+| Stakeholder | Role | Impact on the project |
+|---|---|---|
+| **Timothé Garde** | Client / sponsor (commanditaire) - owner & coach, CrossFit LAB | High - defines the real-world requirements, validates the MVP against actual daily use (WOD publishing, scoring, the `/screen` TV view), and is the intended long-term user after the defense. |
+| **Kevin Rigal & Panaki Gillot** | Project team - developers | High - responsible for design, development, testing, and delivery of the MVP within the 10-week timeline. |
+| **DWWM formation tutor(s)** *(Thomas Jondeau, Sofian Messaoui)* | Pedagogical supervisor | Medium - reviews progress against the RNCP 37674 blocks, gives technical guidance and unblocks methodology questions during the formation. |
+| **Examination jury (soutenance)** | External evaluator | High at defense time - certifies competency validation based on the live demo (especially the `/screen` view), the documentation, and the Q&A. |
+| **CrossFit LAB athletes/members** | Indirect end users | Medium - consume the public leaderboard, WOD, and TV view daily; their usability feedback (readability from 5-8m, clarity of the leaderboard) validates whether the MVP solves the stated problem. |
 
 ---
 
@@ -71,8 +109,8 @@ Even though both members share full-stack ownership over the project as a whole 
 
 | Concern | Owner | Focus during brainstorming & evaluation |
 |---|---|---|
-| **Front-end / UX feasibility** | [Your Name] | Sketched what each idea's key screens would look like (public views, admin forms, and - decisive for BoxTrack - the `/screen` broadcast view), and judged the *Feasibility* and *Differentiation* scores from a UI-complexity standpoint (e.g. flagging that BoxTrack's TV view is harder than a standard dashboard, but also more impressive). |
-| **Back-end / data feasibility** | [Teammate Name] | For each idea, sketched a rough data model (entities, relations) and judged how naturally it would cover C4/C5/C6 (database design, data access, authentication/API), which is what pushed *RNCP alignment* down for ShiftEase/StudyDeck (thinner relational model) and up for BoxTrack (`users`/`athletes`/`wods`/`scores` with real constraints). |
+| **Front-end / UX feasibility** | Kevin Rigal | Sketched what each idea's key screens would look like (public views, admin forms, and - decisive for BoxTrack - the `/screen` broadcast view), and judged the *Feasibility* and *Differentiation* scores from a UI-complexity standpoint (e.g. flagging that BoxTrack's TV view is harder than a standard dashboard, but also more impressive). |
+| **Back-end / data feasibility** | Panaki Gillot | For each idea, sketched a rough data model (entities, relations) and judged how naturally it would cover C4/C5/C6 (database design, data access, authentication/API), which is what pushed *RNCP alignment* down for ShiftEase/StudyDeck (thinner relational model) and up for BoxTrack (`users`/`athletes`/`wods`/`scores` with real constraints). |
 | **Risk assessment** | Both (joint session) | Scored *Risk* together on a call, cross-checking each other's front-end and back-end read to avoid one side underestimating the other's workload. |
 
 This split carried into the ranking discussion: BoxTrack was the idea both members independently rated highest on their respective side (UI ambition on the front-end side, data-model depth on the back-end side), which reinforced the final decision.
