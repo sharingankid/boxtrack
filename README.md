@@ -4,4 +4,5 @@ Web app for CrossFit LAB (Toulouse): daily WOD, athlete scores, real-time leader
 
 ## Documentation
 
-- [Idea Development — Team, Brainstorming, MVP Decision](docs/01-idea-development.md)
+- [Idea Development - Team, Roles, Stakeholders, Brainstorming, MVP Decision](docs/01-idea-development.md)
+- [Project Charter - High-Level Plan & Timeline](docs/02-project-charter.md)
