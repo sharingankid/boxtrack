@@ -19,7 +19,7 @@ affinity rather than an arbitrary split.
 |---|---|
 | **Team size** | 2 members |
 | **Members** | Kevin Rigal (krigal323@gmail.com), Panaki Gillot (gillotpanaki@gmail.com) |
-| **Temporary Project Manager** | Kevin Rigal - coordinates planning and documentation, and keeps the Trello backlog groomed against the 10-week schedule during Stage 1-2. A coordination role, not a hierarchy: technical decisions are still made jointly, and the role can rotate in later stages if the team decides it should. |
+| **Temporary Project Manager** | Kevin Rigal - coordinates planning and documentation, and keeps the Notion backlog groomed against the 10-week schedule during Stage 1-2. A coordination role, not a hierarchy: technical decisions are still made jointly, and the role can rotate in later stages if the team decides it should. |
 | **Client / Sponsor (commanditaire)** | Timothé Garde, owner of CrossFit LAB (Toulouse) |
 
 ### 1.2 Technical Roles & Rationale
@@ -42,11 +42,13 @@ to move fast, it defaults to the lead above.
 
 | | |
 |---|---|
-| **Communication tool** | Discord (daily check-ins, constant communication, quick decisions, pair-programming voice calls) |
-| **Task tracking tool** | Trello (Kanban board: Backlog / To Do / In Progress / Review / Done, one card per user story) |
+| **Communication tool** | Discord (main channel with the team **and the sponsor**, Timothé Garde - daily check-ins, quick decisions, questions, and out-of-meeting validations) |
+| **Task tracking tool** | Notion (backlog, meeting notes, progress tracking, internal team documentation) |
+| **Shared resources** | Google Drive (exported mockups, reference documents, screenshots, materials shared with the sponsor) |
 | **Version control** | Git + GitHub (feature branches, pull requests reviewed by the other member before merge into `main`) |
 | **Documentation** | Markdown files in the repository (`/docs`), Figma for wireframes/prototype |
-| **Working norms** | Short daily async update on Discord (what was done / blockers / next), weekly planning session to groom the Trello backlog against the 10-week schedule, PR review required before merge, commit messages in English following Conventional Commits style |
+| **Weekly sync** | Fixed day: Friday afternoon, indicative time ~14:30 (adjustable by agreement). Agenda: progress · blockers · validations · next step. Timothé Garde is available on Discord for feedback/validation outside formal meetings. |
+| **Working norms** | Short daily async update on Discord (what was done / blockers / next), Notion backlog groomed at the Friday sync against the 10-week schedule, PR review required before merge, commit messages in English following Conventional Commits style |
 
 ### 1.4 Stakeholders
 
@@ -74,7 +76,7 @@ We combined three techniques to generate and stress-test ideas:
 
 | # | Idea | Short description |
 |---|------|--------------------|
-| 1 | **BoxTrack** | Web app for a CrossFit box: daily WOD publishing, score entry by category (RX/Scaled/Modified), auto-ranked leaderboard, and a dedicated broadcast-style `/screen` route for the gym's TV. |
+| 1 | **BoxTrack** | Web app for a CrossFit box: daily multi-phase WOD publishing (Warm-Up, Skill/Strength, WOD) with a dedicated broadcast-style `/screen` route for the gym's TV, plus optional score entry (RX/Scaled/Modified) and an auto-ranked leaderboard if time allows. |
 | 2 | **ShiftEase** | Shift-scheduling and swap-request tool for small retail/hospitality teams, with a manager dashboard and a public "today's shift" screen for the break room. |
 | 3 | **LocalLoop** | Neighborhood tool/object lending platform - members list items they own, browse what's available nearby, and reserve a loan slot. |
 | 4 | **StudyDeck** | Spaced-repetition flashcard app for students, with shared decks per class and a leaderboard of review streaks. |
@@ -121,14 +123,19 @@ This split carried into the ranking discussion: BoxTrack was the idea both membe
 
 ### 3.1 Problem
 
-CrossFit LAB currently manages its daily life - the Workout Of the Day (WOD), athlete scores, and the leaderboard shown on the gym's TV - through scattered, manual tools (spreadsheets, whiteboards, WhatsApp). This is slow to update, error-prone, not visible in real time during class, and gives the coach no structured history of athlete performance over time.
+CrossFit LAB currently manages its daily operations without any dedicated tool: the WOD (Workout Of the Day) is posted on WhatsApp, scores are noted on a whiteboard or a Google Sheet, and box announcements go out ad hoc on social media. This is slow to update, error-prone, not visible in real time during class, gives the coach no structured history, and scatters the box's communication across tools that were never built for it.
 
 ### 3.2 Solution
 
-BoxTrack centralizes these three needs in one web application:
-1. The coach publishes and edits the daily WOD (type, description, target time).
-2. Athletes' scores are recorded by the coach right after class, categorized RX/Scaled/Modified.
-3. A leaderboard is computed automatically and displayed publicly - including on a dedicated `/screen` route designed for the gym's TV, refreshing itself via polling with no manual reload.
+Per the official cahier des charges (v1.0, signed off by Timothé Garde), BoxTrack's V1 scope is deliberately narrow and prioritized:
+
+**Core (must ship):**
+1. The coach publishes each session's full structure - Warm-Up, Skill/Strength, and the WOD itself (format, movements, charges, notes) - from one admin form, in under 5 minutes, with no training required.
+2. The session is displayed publicly (mobile + desktop, no login), each phase shown distinctly, with simple navigation to past sessions.
+3. A dedicated `/screen` broadcast route projects the current session (Warm-Up -> Skill -> WOD) fullscreen on the gym's TV, readable from 5-8m, with zero interaction required.
+4. The admin space is authentication-protected, cleanly separated from the public read-only views.
+
+**Optional (if time permits):** score entry per athlete (RX/Scaled/Modified) with an auto-ranked leaderboard, athlete roster management, a box Announcements screen, and a QR Codes screen for the community's key links (Google reviews, Instagram, WhatsApp group, sign-ups).
 
 ### 3.3 Target Audience / Users
 
@@ -143,33 +150,44 @@ A **responsive web application** (mobile-first for the public/admin views), incl
 ### 3.5 Why This Idea Over the Others
 
 - It is the only idea backed by a **real external sponsor** with a described, concrete need - we validate against an actual person's daily use case, not an assumed persona.
-- It naturally covers **all 7 RNCP blocks** with genuine depth rather than a superficial checkbox: a real relational data model (C4/C5: `users`, `athletes`, `wods`, `scores`, with a `UNIQUE(wod_id, athlete_id)` constraint and a ranking index), real-time front-end behavior (C3: polling leaderboard), and authentication with role separation (C6: coach vs. public).
-- The `/screen` requirement forces genuinely advanced, non-trivial CSS (C1/C2: `clamp()`, viewport units, strict WCAG AAA contrast, zero-scroll 16:9 layout) which is a stronger technical demonstration than a standard responsive dashboard, and gives us a high-impact live demo at the oral defense.
+- It naturally covers **all 7 RNCP blocks** with genuine depth rather than a superficial checkbox: a real relational data model even before any optional feature is built (C4/C5: `users`, `wods` with their Warm-Up/Skill-Strength/WOD phases and per-phase movements across 6 supported formats), real-time-ish front-end behavior on `/screen` (C3), and authentication with role separation (C6: coach vs. public).
+- The `/screen` requirement forces genuinely advanced, non-trivial CSS (C1/C2: `clamp()`, viewport units, strict WCAG AAA contrast, zero-scroll 16:9 layout, structured Warm-Up/Skill/WOD broadcast typography) which is a stronger technical demonstration than a standard responsive dashboard, and gives us a high-impact live demo at the oral defense.
 - Its scope is naturally boundable (see 3.7) without feeling artificially cut down, which matters for a fixed 10-week timeline with 2 people.
 
 ### 3.6 Key Features & SMART Goals
 
-1. **Coach WOD & score management**
-   *By the end of Sprint 3 (week 5), the coach can create, edit, and delete a WOD and record athlete scores through authenticated CRUD forms, with the leaderboard for that WOD re-ranking automatically on every save - validated with at least 5 seeded WODs and 10 seeded athletes.*
+These map directly onto the 4 CORE·V1 features from the official cahier des charges. Optional features (scores/leaderboard, athlete management, Announcements, QR Codes) are deliberately excluded from the SMART goals below - see [3.7 Scope](#37-scope) - and only get their own goals once all four are done and demoed.
 
-2. **Public leaderboard & broadcast `/screen` view**
-   *By the end of Sprint 4 (week 7), the `/screen` route displays the current WOD and a leaderboard that refreshes via polling every 30 seconds without a manual reload, remains fully readable within a 16:9 viewport with zero scrolling from 1080p to 4K, and passes a WCAG AAA contrast check.*
+1. **Full session WOD entry (Warm-Up + Skill/Strength + WOD)**
+   *By the end of Sprint 3 (week 5), the coach can create, edit, and delete a full session - Warm-Up, Skill/Strength, and the WOD in any of the 6 supported formats (AMRAP, For Time, EMOM, Tabata, Chipper, Strength) - through one authenticated form, completing the entire flow in under 5 minutes without assistance, validated with at least 10 seeded realistic sessions covering every format.*
 
-3. **Secure, role-based access**
-   *By the end of Sprint 5 (week 8), all admin routes (WOD, score, athlete management) are protected behind JWT-based authentication with bcrypt-hashed passwords, verified by at least 3 Postman tests confirming that unauthenticated requests to admin endpoints are rejected (401/403), while public GET endpoints (WOD, leaderboard, history) remain accessible without a login.*
+2. **Public WOD display with history navigation**
+   *By the end of Sprint 4 (week 6), the public WOD view (mobile + desktop, no login) displays each phase distinctly with the format highlighted, movements/charges/instructions legible, and lets a visitor navigate to at least 4 weeks of past sessions.*
+
+3. **Broadcast `/screen` view**
+   *By the end of Sprint 4 (week 7), the `/screen` route displays the current session's Warm-Up -> Skill -> WOD structure fullscreen in a 16:9 layout with zero scrolling from 1080p to 4K, passes a WCAG AAA contrast check, and requires no interaction to function.*
+
+4. **Secure admin access**
+   *By the end of Sprint 5 (week 8), every admin route is protected behind authenticated sessions, verified by at least 3 Postman tests confirming unauthenticated requests are rejected (401/403), with a persistent session across reloads and an explicit logout, while public GET endpoints (WOD, history) remain accessible without a login.*
 
 ### 3.7 Scope
 
-**In-scope (MVP):**
-- WOD CRUD (coach only), one active WOD per date.
-- Score entry per athlete per WOD, with RX/Scaled/Modified categorization, editable by the coach.
-- Auto-computed leaderboard per WOD.
-- Public, no-login views: WOD of the day, leaderboard, historical WODs/scores.
-- Dedicated `/screen` broadcast route with auto-polling leaderboard.
-- Athlete management (add/edit/deactivate) by the coach - no self-registration.
-- Coach authentication (JWT) and protected admin routes.
-- Coach dashboard (today's WOD, latest scores, active athletes, quick actions).
-- Deployment to a public HTTPS URL.
+Per the official cahier des charges, V1 scope is split into a **Core** tier that must ship, and an **Optional** tier built only if time remains once Core is fully done and demoed.
+
+**Core (must ship):**
+- WOD entry (coach only): Warm-Up (general + specific), Skill/Strength (skill or strength, movements, charges/series, instructions), WOD (format - AMRAP/For Time/EMOM/Tabata/Chipper/Strength -, movements/reps, duration or objective, coach remarks), date and time slot. One session per date.
+- Public, no-login WOD view: each phase shown distinctly, format highlighted, movements/charges/instructions legible, simple navigation to past sessions.
+- Dedicated `/screen` broadcast route (Warm-Up -> Skill -> WOD, fullscreen, 16:9, no interaction, no scroll).
+- Coach authentication (email + password), persistent session, explicit logout, protected admin routes.
+- Deployment to a public HTTPS URL, usable by Timothé Garde without technical assistance.
+
+**Optional (if time permits, after Core is done):**
+- Score entry per athlete per WOD, RX/Scaled/Modified categorization, editable by the coach.
+- Auto-computed leaderboard per WOD, optionally filterable by category.
+- Athlete roster management (add/edit/deactivate) by the coach - no self-registration.
+- Announcements screen (owner publishes box news/events, public + TV-ready display).
+- QR Codes screen (owner manages labeled QR codes to community links, public + TV-ready display).
+- Coach dashboard (today's session, quick actions) - supports the <5-minute creation goal but isn't itself a CDC line item.
 
 **Out-of-scope (MVP):**
 - Native mobile app (iOS/Android) - web-responsive only.
@@ -184,18 +202,19 @@ A **responsive web application** (mobile-first for the public/admin views), incl
 | Risk | Mitigation |
 |------|------------|
 | Limited prior experience with advanced/broadcast-scale CSS (`clamp()`, strict 16:9 no-scroll layout) | Prototype the `/screen` view early in Figma (Sprint 1–2) and timebox a dedicated learning/spike session before implementation starts in Sprint 4. |
-| Real-time polling and leaderboard re-ranking logic adds front-end/back-end complexity | Start with the simplest possible polling implementation (fixed interval `fetch`) before considering optimizations; keep ranking computed server-side via one indexed SQL query. |
-| Tight 10-week timeline shared across 2 people with overlapping full-stack roles | Maintain a strict MoSCoW-prioritized Trello backlog, weekly re-planning, and split feature ownership per sprint to avoid duplicated or blocked work. |
+| The Core WOD data model (3 phases x 6 formats) is more relationally complex than a flat WOD record, and could take longer than expected to design and build correctly | Lock the ERD in writing at the end of Sprint 2, reviewed jointly before any endpoint is built; reuse one generic `movements` table across the Skill/Strength and WOD phases instead of duplicating structures. |
+| Team starts building the Optional tier (scores/leaderboard, Announcements, QR Codes) before the Core tier from the official CDC is fully done and demoed | Core V1 (WOD entry/display/`/screen`/auth) must be demoed end-to-end before any Optional feature starts; enforced as an explicit rule on the Notion board. |
+| Tight 10-week timeline shared across 2 people with overlapping full-stack roles | Maintain a strict MoSCoW-prioritized Notion backlog, weekly re-planning at the Friday sync, and split feature ownership per sprint to avoid duplicated or blocked work. |
 | Deployment/HTTPS/environment configuration issues discovered too late | Deploy a minimal skeleton to Railway/Render as early as Sprint 2, not only at the end, so infrastructure issues surface early. |
-| Scope creep (e.g. adding the optional athlete portal or analytics mid-project) | Explicitly track "nice-to-have" ideas in a separate Trello "Icebox" list, reviewed only after all in-scope MVP features are done. |
+| Scope creep (e.g. adding the optional athlete portal or analytics mid-project) | Explicitly track "nice-to-have" ideas in a separate Notion "Icebox" list, reviewed only after all Core V1 features are done. |
 | Coordination gaps between two members both working full-stack | Daily async Discord updates + mandatory PR review before merge to `main`, so both members stay aware of the current state of the codebase. |
 
 ---
 
 ## 4. Summary
 
-**BoxTrack** is a web application built for CrossFit LAB (Toulouse) that replaces the box's scattered spreadsheets and messaging-app workflow with a single real-time source of truth for the daily WOD, athlete scores, and the leaderboard. The coach, Timothé Garde, gets a protected admin space to publish workouts, record scores, and manage athletes; members and visitors get free public access to the WOD, the leaderboard, and historical results, including a broadcast-style `/screen` route purpose-built for the gym's TV.
+**BoxTrack** is a web application built for CrossFit LAB (Toulouse) that replaces WhatsApp/whiteboard/Google-Sheet chaos with a single source of truth for the daily session. Per the official cahier des charges (v1.0), the coach, Timothé Garde, gets a protected admin space to publish each session's full structure - Warm-Up, Skill/Strength, and the WOD itself, across 6 supported formats - in under 5 minutes without training; members and visitors get free public access to that session, with simple navigation to past ones, plus a broadcast-style `/screen` route purpose-built for the gym's TV. Score entry, an auto-ranked leaderboard, athlete management, an Announcements screen, and a QR Codes screen are explicitly Optional: valuable, but only built once the Core tier is fully done and demoed.
 
-We selected this idea over three alternatives (ShiftEase, StudyDeck, LocalLoop) because it is the only one grounded in a real sponsor and a real, described daily-life problem, it maps naturally onto all seven RNCP competency blocks with genuine depth (relational data model, real-time UI, authenticated API), and its `/screen` requirement gives us a demanding, high-impact technical challenge - advanced responsive CSS at broadcast scale - that will be the standout moment of our oral defense.
+We selected this idea over three alternatives (ShiftEase, StudyDeck, LocalLoop) because it is the only one grounded in a real sponsor and a real, described daily-life problem, it maps naturally onto all seven RNCP competency blocks with genuine depth even on the Core tier alone (a relational WOD/phase/movement data model, real-time-ish `/screen` behavior, authenticated API), and its `/screen` requirement gives us a demanding, high-impact technical challenge - advanced responsive CSS at broadcast scale - that will be the standout moment of our oral defense.
 
 Beyond the school evaluation, the project has a direct real-world impact: if the deployed MVP genuinely fits CrossFit LAB's daily routine, Timothé Garde can keep using it after the defense, making this a project with a life beyond the classroom rather than a throwaway exercise.

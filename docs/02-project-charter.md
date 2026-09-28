@@ -20,10 +20,10 @@ content that already lives in the Stage 1 document.
 |---|---|---|
 | **Team & Technical Roles** | 2-person team, shared full-stack. Kevin Rigal is temporary Project Manager and Front-end/UX lead; Panaki Gillot is Back-end/Data lead. | [01-idea-development.md §1](01-idea-development.md#1-team-formation) |
 | **Stakeholders** | Timothé Garde (client/sponsor), the project team, DWWM tutor(s), the examination jury, and CrossFit LAB's athletes/members. | [01-idea-development.md §1.4](01-idea-development.md#14-stakeholders) |
-| **Problem & Solution** | Centralize WOD publishing, score entry, and a real-time leaderboard - including a `/screen` broadcast view - for CrossFit LAB. | [01-idea-development.md §3.1-3.2](01-idea-development.md#31-problem) |
-| **Objectives (SMART goals)** | Coach WOD/score management (wk 5); public leaderboard + `/screen` (wk 7); secure role-based access (wk 8). | [01-idea-development.md §3.6](01-idea-development.md#36-key-features--smart-goals) |
-| **Scope** | In/out-of-scope boundaries: web-responsive MVP for one box, no native app, no self-registration, no payments. | [01-idea-development.md §3.7](01-idea-development.md#37-scope) |
-| **Risks** | 6 identified risks with mitigations (CSS complexity, polling complexity, tight timeline, deployment, scope creep, coordination). | [01-idea-development.md §3.8](01-idea-development.md#38-risks--mitigation) |
+| **Problem & Solution** | Centralize the daily session (Warm-Up, Skill/Strength, WOD) and its public/TV display for CrossFit LAB - per the official cahier des charges v1.0. Scores/leaderboard, athlete management, Announcements, and QR Codes are Optional. | [01-idea-development.md §3.1-3.2](01-idea-development.md#31-problem) |
+| **Objectives (SMART goals)** | Full session WOD entry, 3 phases/6 formats (wk 5); public WOD display + history (wk 6); broadcast `/screen` (wk 7); secure admin access (wk 8). | [01-idea-development.md §3.6](01-idea-development.md#36-key-features--smart-goals) |
+| **Scope** | Core/Optional/Out-of-scope boundaries: web-responsive MVP for one box, no native app, no self-registration, no payments. | [01-idea-development.md §3.7](01-idea-development.md#37-scope) |
+| **Risks** | 7 identified risks with mitigations (CSS complexity, WOD data-model complexity, scope-order discipline, tight timeline, deployment, scope creep, coordination). | [01-idea-development.md §3.8](01-idea-development.md#38-risks--mitigation) |
 
 ---
 
@@ -34,9 +34,9 @@ content that already lives in the Stage 1 document.
 | Stage | Status | Weeks | Key milestones / deliverables |
 |---|---|---|---|
 | **1. Idea Development** | Completed | Week 1 | `docs/01-idea-development.md`: team formation, brainstorming, MVP decision (BoxTrack), SMART goals, scope, risks. |
-| **2. Project Planning** | Current | Week 2 | `docs/02-project-charter.md` (this document): Project Charter consolidating the team/scope/risks with the high-level plan/timeline. Trello backlog structured by MoSCoW. |
+| **2. Project Planning** | Current | Week 2 | `docs/02-project-charter.md` (this document): Project Charter consolidating the team/scope/risks with the high-level plan/timeline. Notion backlog structured by MoSCoW, Core tier ordered ahead of Optional. |
 | **3. Technical Documentation** | Upcoming | Weeks 2-3 | Figma wireframes + clickable prototype (incl. `/screen`), MCD/MLD, SQL schema + seed script, initial Postman collection skeleton. |
-| **4. MVP Development** | Upcoming | Weeks 3-9 | Auth + WOD/athlete CRUD + scoring API (wks 3-5); public views + `/screen` broadcast leaderboard (wks 5-7); admin dashboard + forms (wks 7-8); hardening, bugfixing, deployment rehearsal (wks 8-9). |
+| **4. MVP Development** | Upcoming | Weeks 3-9 | Auth + Core WOD API/phases (wks 3-5); public WOD view + history + `/screen` broadcast (wks 5-7); Optional tier if Core is demoed on time - scores/leaderboard, athletes, Announcements, QR Codes (wks 7-8); hardening, bugfixing, deployment rehearsal (wks 8-9). |
 | **5. Project Closure** | Upcoming | Week 10 | Final HTTPS deployment, README finalized, Postman collection exported, defense slides, `/screen` demo rehearsal, oral defense. |
 
 ### 2.2 Timeline (Gantt-style)
@@ -54,20 +54,21 @@ This maps onto the more detailed sprint breakdown from the original project brie
 
 | Sprint | Focus | Weeks |
 |---|---|---|
-| S1 | Scoping & design (user stories, MoSCoW, MCD/MLD, wireframes incl. `/screen`) | 1-2 |
-| S2 | Setup & database (high-fidelity Figma, repo init, SQL schema + seed) | 2-3 |
-| S3 | Back-end core (auth, WOD/athlete CRUD, scores endpoint, ranked leaderboard) | 3-5 |
-| S4 | Front-end - public views & `/screen` (WOD home, public leaderboard, broadcast polling) | 5-7 |
-| S5 | Front-end - admin space (coach dashboard, WOD form, score entry, athlete management) | 7-8 |
+| S1 | Scoping & design (user stories, MoSCoW, ERD incl. WOD phases/movements, wireframes for all 5 required views incl. `/screen`) | 1-2 |
+| S2 | Setup & database (high-fidelity Figma, repo init, SQL schema + seed covering `wods`/warmup/skill-strength/WOD blocks/movements) | 2-3 |
+| S3 | Back-end core (auth, Core WOD CRUD API - 3 phases, 6 formats) | 3-5 |
+| S4 | Front-end - public WOD view + history nav, `/screen` broadcast (Warm-Up -> Skill -> WOD) | 5-7 |
+| S5 | Optional tier, only once Core is demoed end-to-end: score entry + leaderboard, athlete management, Announcements, QR Codes | 7-8 |
 | S6 | Deployment & finalization (tests, HTTPS deploy, README, Postman, demo prep) | 9-10 |
 
 ### 2.3 Key Milestones
 
-- **End of Week 2:** Project Charter approved, Figma wireframes started, MCD/MLD drafted.
+- **End of Week 2:** Project Charter approved, Figma wireframes started for all 5 required views (public WOD, admin WOD form, `/screen`, Announcements, QR Codes), ERD drafted.
 - **End of Week 3:** SQL schema + seed script committed; back-end scaffolding (auth) in place.
-- **End of Week 5:** Coach can create a WOD and record scores end-to-end (SMART goal 1, see Stage 1 doc).
-- **End of Week 7:** `/screen` broadcast view live with 30s polling (SMART goal 2).
-- **End of Week 8:** Admin space fully protected behind JWT auth (SMART goal 3).
+- **End of Week 5:** Coach can create/edit/delete a full session (Warm-Up + Skill/Strength + WOD, any of 6 formats) in under 5 minutes (SMART goal 1, see Stage 1 doc).
+- **End of Week 6:** Public WOD view live with history navigation (SMART goal 2).
+- **End of Week 7:** `/screen` broadcast view live, fullscreen 16:9, WCAG AAA (SMART goal 3). **Core V1 demoed end-to-end - gate before any Optional work starts.**
+- **End of Week 8:** Admin space fully protected behind authenticated sessions (SMART goal 4); Optional tier (scores/leaderboard, athletes, Announcements, QR Codes) attempted only from here if the schedule allows.
 - **End of Week 9:** Application deployed to a public HTTPS URL, feature-complete.
 - **End of Week 10:** Final defense - live `/screen` demo, documentation, and Postman collection delivered.
 
@@ -80,4 +81,4 @@ roles, stakeholders, problem, objectives, scope, and risks already defined in St
 above), and adds what Stage 2 actually produces - a week-by-week high-level plan that turns the
 Stage 1 SMART goals and scope into a concrete 10-week schedule ending in the oral defense. It is the
 reference point for Stage 3 (Technical Documentation) and Stage 4 (MVP Development), which should be
-planned as Trello epics directly against the stages and milestones listed above.
+planned as Notion epics directly against the stages and milestones listed above.
