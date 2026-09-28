@@ -4,7 +4,7 @@ import SwiftUI
 struct UnbrokenApp: App {
     var body: some Scene {
         WindowGroup {
-            Text("Unbroken")
+            RecipeListView()
         }
     }
 }
