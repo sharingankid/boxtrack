@@ -475,11 +475,11 @@ Base URL: `/api`. All admin routes require `Authorization: Bearer <token>` and a
 | Aspect | Strategy |
 |---|---|
 | **Tool** | Git + GitHub, as decided in team formation ([01-idea-development.md §1](01-idea-development.md)). |
-| **Branching model** | `main` (always deployable) ← `develop` (integration) ← `feature/<short-description>` branches, one per user story/Notion card. |
+| **Branching model** | `main` (always deployable) ← `dev` (integration) ← `feature/<short-description>` branches, one per user story/Notion card. |
 | **Commits** | Conventional Commits style (`feat:`, `fix:`, `chore:`, `docs:`, `test:`), in English, one logical change per commit. |
-| **Pull Requests** | Every feature branch opens a PR into `develop`; reviewed and approved by the other team member before merge (no self-merge). PR description links the Notion card. |
+| **Pull Requests** | Every feature branch opens a PR into `dev`; reviewed and approved by the other team member before merge (no self-merge). PR description links the Notion card. |
 | **Code review checklist** | Naming/readability, no secrets committed, tests included for new endpoints/components, matches the API spec in Section 4, and - for any `OPTIONAL` feature PR - a check that all `CORE` items are already merged and demoed. |
-| **Releases** | `develop` merged into `main` at the end of each sprint once QA passes; `main` merges trigger deployment (see 5.3). |
+| **Releases** | `dev` merged into `main` at the end of each sprint once QA passes; `main` merges trigger deployment (see 5.3). |
 | **Environment secrets** | `.env` files git-ignored; `.env.example` committed with placeholder keys (`DATABASE_URL`, `SESSION_SECRET`). |
 
 ### 5.2 Quality Assurance (QA)
@@ -502,7 +502,7 @@ a class).
 
 | Environment | Trigger | Host (proposed) |
 |---|---|---|
-| **Staging** | Push to `develop` | Render/Railway free tier, connected to a staging PostgreSQL instance, used for pre-release manual QA. |
+| **Staging** | Push to `dev` | Render/Railway free tier, connected to a staging PostgreSQL instance, used for pre-release manual QA. |
 | **Production** | Merge to `main` | Render/Railway, public HTTPS URL, production PostgreSQL instance with periodic backups. |
 
 A minimal skeleton is deployed as early as Sprint 2 (per the Stage 1 risk mitigation plan,
