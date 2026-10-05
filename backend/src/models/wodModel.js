@@ -6,23 +6,29 @@ async function fetchFullWod(client, wodId) {
   const wodRow = wodResult.rows[0];
   if (!wodRow) return null;
 
-  const skillStrengthResult = await client.query('SELECT * FROM skill_strength_blocks WHERE wod_id = $1', [wodId]);
+  const skillStrengthResult = await client.query('SELECT * FROM skill_strength_blocks WHERE wod_id = $1', [
+    wodId,
+  ]);
   const wodBlockResult = await client.query('SELECT * FROM wod_blocks WHERE wod_id = $1', [wodId]);
   const movementsResult = await client.query(
     'SELECT * FROM movements WHERE wod_id = $1 ORDER BY phase, order_index',
     [wodId]
   );
 
-  return assemble(wodRow, skillStrengthResult.rows[0] || null, wodBlockResult.rows[0] || null, movementsResult.rows);
+  return assemble(
+    wodRow,
+    skillStrengthResult.rows[0] || null,
+    wodBlockResult.rows[0] || null,
+    movementsResult.rows
+  );
 }
 
 // A date can have more than one session (different time slots), so this
 // returns an array - possibly empty, never null.
 async function findAllBySessionDate(sessionDate) {
-  const { rows } = await pool.query(
-    'SELECT id FROM wods WHERE session_date = $1 ORDER BY time_slot',
-    [sessionDate]
-  );
+  const { rows } = await pool.query('SELECT id FROM wods WHERE session_date = $1 ORDER BY time_slot', [
+    sessionDate,
+  ]);
   const wods = [];
   for (const row of rows) {
     wods.push(await fetchFullWod(pool, row.id));
