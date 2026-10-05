@@ -1,0 +1,192 @@
+{
+  "info": {
+    "name": "BoxTrack API",
+    "description": "Core V1 (auth + WOD sessions) + Recipes (sponsor-approved addition). See backend/API_CONTRACT.md for the full field-by-field contract. Run 'Login' first - it saves the token into {{token}} automatically for every other request.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:3000/api" },
+    { "key": "token", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('token', body.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"coach@crossfitlab.fr\",\n  \"password\": \"CoachDemo2026!\"\n}"
+            },
+            "url": "{{base_url}}/auth/login"
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/auth/logout"
+          }
+        }
+      ]
+    },
+    {
+      "name": "WODs - public",
+      "item": [
+        {
+          "name": "Today's sessions",
+          "request": { "method": "GET", "url": "{{base_url}}/wods/today" }
+        },
+        {
+          "name": "History (date range)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/wods?from=2026-01-01&to=2026-12-31",
+              "host": ["{{base_url}}"],
+              "path": ["wods"],
+              "query": [
+                { "key": "from", "value": "2026-01-01" },
+                { "key": "to", "value": "2026-12-31" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Session detail",
+          "request": { "method": "GET", "url": "{{base_url}}/wods/1" }
+        }
+      ]
+    },
+    {
+      "name": "WODs - admin (coach)",
+      "item": [
+        {
+          "name": "Create session",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"session_date\": \"2026-12-01\",\n  \"time_slot\": \"18:00\",\n  \"warmup\": { \"general\": \"3 min row easy\", \"specific\": \"empty bar squats x10\" },\n  \"skill_strength\": { \"kind\": \"skill\", \"instructions\": \"Kipping pull-up drills\", \"movements\": [{ \"movement_name\": \"Kipping Pull-Up\", \"detail\": \"3x5\" }] },\n  \"wod\": { \"format\": \"AMRAP\", \"duration_or_target\": \"20 min\", \"notes\": \"pace yourself\", \"movements\": [{ \"movement_name\": \"Pull-Up\", \"detail\": \"5 reps\" }, { \"movement_name\": \"Push-Up\", \"detail\": \"10 reps\" }, { \"movement_name\": \"Air Squat\", \"detail\": \"15 reps\" }] }\n}"
+            },
+            "url": "{{base_url}}/admin/wods"
+          }
+        },
+        {
+          "name": "Update session",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"wod\": { \"format\": \"FOR_TIME\", \"duration_or_target\": \"21-15-9\", \"movements\": [{ \"movement_name\": \"Thruster\", \"detail\": \"30kg\" }] }\n}"
+            },
+            "url": "{{base_url}}/admin/wods/1"
+          }
+        },
+        {
+          "name": "Delete session",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/admin/wods/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recipes - public",
+      "item": [
+        {
+          "name": "List recipes",
+          "request": { "method": "GET", "url": "{{base_url}}/recipes" }
+        },
+        {
+          "name": "Recipe detail",
+          "request": { "method": "GET", "url": "{{base_url}}/recipes/1" }
+        }
+      ]
+    },
+    {
+      "name": "Recipes - admin (coach)",
+      "item": [
+        {
+          "name": "Search Spoonacular",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": {
+              "raw": "{{base_url}}/admin/recipes/search?query=chicken",
+              "host": ["{{base_url}}"],
+              "path": ["admin", "recipes", "search"],
+              "query": [{ "key": "query", "value": "chicken" }]
+            }
+          }
+        },
+        {
+          "name": "Save a recipe",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"spoonacular_id\": 634476,\n  \"name\": \"Bbq Chicken\",\n  \"calorie\": 478,\n  \"image_url\": \"https://img.spoonacular.com/recipes/634476-312x231.jpg\",\n  \"categories\": [\"lunch\", \"main course\"]\n}"
+            },
+            "url": "{{base_url}}/admin/recipes"
+          }
+        },
+        {
+          "name": "Update a recipe",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{token}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"calorie\": 500,\n  \"categories\": [\"dinner\"]\n}" },
+            "url": "{{base_url}}/admin/recipes/1"
+          }
+        },
+        {
+          "name": "Delete a recipe",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/admin/recipes/1"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Misc",
+      "item": [{ "name": "Health check", "request": { "method": "GET", "url": "http://localhost:3000/health" } }]
+    }
+  ]
+}
