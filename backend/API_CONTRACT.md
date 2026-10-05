@@ -1,9 +1,10 @@
-# BoxTrack API Contract (Core V1)
+# BoxTrack API Contract (Core V1 + Recipes)
 
-For Panaki (front-end/UX) - this is the precise, as-implemented contract for the back-end, Core V1
-only. Scores, athletes, announcements, and QR codes are Optional-tier (CDC) and have no endpoints
-yet. If anything here needs to change for the UI to work well, tell Kevin before building against
-it - this file gets updated alongside the code, not after.
+For Panaki (front-end/UX) - this is the precise, as-implemented contract for the back-end. Covers
+Core V1 (WOD sessions) and the Recipes section (sponsor-approved addition, 2026-10-05 - see below).
+Scores, athletes, announcements, and QR codes are Optional-tier (CDC) and still have no endpoints.
+If anything here needs to change for the UI to work well, tell Kevin before building against it -
+this file gets updated alongside the code, not after.
 
 ## Conventions
 
@@ -184,6 +185,88 @@ untouched.
 
 ---
 
+## Recipes ("cuisine" section)
+
+**Sponsor-approved addition, confirmed 2026-10-05** - not in the original cahier des charges.
+Timothé Garde wants a healthy/fit recipe section members can use at home: the coach curates
+recipes (search Spoonacular, pick one, save it), everyone else browses the curated list. Nothing
+here touches the Core WOD flow or its priority.
+
+### The Recipe object
+
+```json
+{
+  "id": 1,
+  "spoonacular_id": 634476,
+  "name": "Bbq Chicken",
+  "calorie": 478,
+  "image_url": "https://img.spoonacular.com/recipes/634476-312x231.jpg",
+  "categories": [{ "name": "lunch" }, { "name": "main course" }],
+  "created_by": 1,
+  "created_at": "2026-10-05T14:56:51.804Z",
+  "updated_at": "2026-10-05T14:56:51.804Z"
+}
+```
+
+| Field | Type | Notes |
+|---|---|---|
+| `id` | integer | |
+| `spoonacular_id` | integer \| null | Set when imported from search; `null` for a manually-entered recipe. |
+| `name` | string | Required. |
+| `calorie` | integer | Required, `>= 0`. |
+| `image_url` | string \| null | |
+| `categories` | array of `{name}` | e.g. Spoonacular's `dishTypes` ("lunch", "dessert"...), or anything the coach types in manually. |
+| `created_by`, `created_at`, `updated_at` | | Same meaning as on the Session object. |
+
+### `GET /api/admin/recipes/search?query=` - coach
+
+Proxies Spoonacular's search **server-side** - the API key never reaches the client. Returns
+ready-to-save shapes (not yet persisted in our database): `{ spoonacular_id, name, calorie,
+image_url, categories }` (`categories` is a plain array of strings here, not `{name}` objects -
+that shape only appears once saved). Pick one and `POST` it as-is to `/admin/recipes`.
+
+**200** `{ "results": [ { "spoonacular_id": 634476, "name": "Bbq Chicken", "calorie": 478, "image_url": "...", "categories": ["lunch", "main course"] }, ... ] }`
+
+**Errors:** `400 VALIDATION_ERROR` (missing `query`) · `401 UNAUTHENTICATED` · `502
+SPOONACULAR_ERROR`/`SPOONACULAR_UNREACHABLE` (Spoonacular is down or rejected the request) · `500
+MISSING_API_KEY` (server misconfiguration - tell Kevin).
+
+### `GET /api/recipes` - public
+
+**200** `{ "recipes": [ {...Recipe...}, ... ] }`, newest first.
+
+### `GET /api/recipes/:id` - public
+
+**200** `{ "recipe": {...} }` · **404 NOT_FOUND**.
+
+### `POST /api/admin/recipes` - coach
+
+**Request** - `name` and `calorie` required, everything else optional. Typically the exact object a
+search result returned, but a coach can also type one in manually (omit `spoonacular_id`):
+
+```json
+{ "spoonacular_id": 634476, "name": "Bbq Chicken", "calorie": 478, "image_url": "...", "categories": ["lunch", "main course"] }
+```
+
+**201** `{ "recipe": {...with its new id...} }`
+
+**Errors:** `400 VALIDATION_ERROR` (missing `name`, missing/negative `calorie`) · `401
+UNAUTHENTICATED`.
+
+### `PUT /api/admin/recipes/:id` - coach
+
+Every field optional - only send what changed. Sending `categories` **replaces the whole list**
+(not a merge).
+
+**200** `{ "recipe": {...} }` · **404 NOT_FOUND** · **400 VALIDATION_ERROR** · **401
+UNAUTHENTICATED**.
+
+### `DELETE /api/admin/recipes/:id` - coach
+
+**204** · **404 NOT_FOUND** · **401 UNAUTHENTICATED**.
+
+---
+
 ## What's deliberately not here yet
 
 Per the CDC's Core/Optional split, nothing below exists - no routes, no tables:
@@ -194,4 +277,6 @@ Per the CDC's Core/Optional split, nothing below exists - no routes, no tables:
 - QR codes
 
 These come after the Core WOD flow (login -> create/edit -> public view -> `/screen`) is fully
-working end-to-end, not before.
+working end-to-end, not before. Recipes is the one exception to "Core before Optional" - it's a
+separate, sponsor-requested track running in parallel, not a reprioritization of the CDC's own
+Optional tier above.

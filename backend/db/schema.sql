@@ -76,4 +76,31 @@ CREATE TABLE movements (
 
 CREATE INDEX idx_movements_wod_phase ON movements(wod_id, phase, order_index);
 
+-- Recipes ("cuisine" section) - approved by the sponsor (Timothé Garde) on
+-- 2026-10-05, beyond the original cahier des charges scope. Curated by the
+-- coach from Spoonacular search results (or entered manually), browsed
+-- publicly by members. See backend/API_CONTRACT.md.
+CREATE TABLE recipes (
+    id            SERIAL PRIMARY KEY,
+    spoonacular_id INTEGER,
+    name          TEXT NOT NULL,
+    calorie       INTEGER NOT NULL CHECK (calorie >= 0),
+    image_url     TEXT,
+    created_by    INTEGER NOT NULL REFERENCES users(id),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Per-recipe tags (e.g. Spoonacular's dishTypes: "lunch", "dessert"...) -
+-- same lightweight pattern as `movements`: owned by one recipe, not a
+-- shared/normalized lookup table, since nothing here needs cross-recipe
+-- category management yet.
+CREATE TABLE recipe_categories (
+    id        SERIAL PRIMARY KEY,
+    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    name      TEXT NOT NULL
+);
+
+CREATE INDEX idx_recipe_categories_recipe_id ON recipe_categories(recipe_id);
+
 COMMIT;

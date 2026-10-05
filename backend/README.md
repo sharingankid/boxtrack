@@ -1,8 +1,10 @@
 # BoxTrack API
 
-REST API for BoxTrack (CrossFit LAB). Core V1 only: coach authentication and full session
-management (Warm-Up / Skill-Strength / WOD, 6 formats). Scores, athletes, announcements, and QR
-codes are Optional-tier and not implemented yet - see
+REST API for BoxTrack (CrossFit LAB). Core V1: coach authentication and full session management
+(Warm-Up / Skill-Strength / WOD, 6 formats). Plus a Recipes ("cuisine") section - a sponsor-approved
+addition (2026-10-05), not in the original cahier des charges: the coach curates healthy/fit recipes
+via Spoonacular, members browse them. Scores, athletes, announcements, and QR codes are the CDC's
+own Optional-tier and still not implemented - see
 [docs/01-idea-development.md §3.7](../docs/01-idea-development.md#37-scope).
 
 Architecture: [docs/03-technical-documentation.md](../docs/03-technical-documentation.md). Precise,
@@ -24,7 +26,9 @@ cd backend
 npm install
 
 cp .env.example .env
-# edit .env: set DATABASE_URL to your local Postgres connection string
+# edit .env: set DATABASE_URL to your local Postgres connection string, and
+# SPOONACULAR_API_KEY (free key at https://spoonacular.com/food-api/console#Dashboard)
+# if you want the recipe search to work - everything else runs fine without it
 
 createdb boxtrack   # or: psql -c "CREATE DATABASE boxtrack;"
 psql "$DATABASE_URL" -f db/schema.sql
@@ -39,6 +43,7 @@ Demo coach login (only if you ran `seed.sql`): `coach@crossfitlab.fr` / `CoachDe
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://user:pass@localhost:5432/boxtrack`. |
 | `PORT` | Port the API listens on (defaults to `3000`). |
+| `SPOONACULAR_API_KEY` | Needed only for `GET /admin/recipes/search`. Everything else works without it. |
 
 ## Running
 
@@ -76,7 +81,12 @@ They cover exactly the three things the CDC's Core V1 needs proven: admin routes
 tokens and accept valid ones (`auth.test.js`, `wodProtection.test.js`), every validation rule and
 the `(session_date, time_slot)` conflict (`wodValidation.test.js`), and that a full nested session
 round-trips correctly through create/read/update/delete, including `/wods/today` across multiple
-same-day sessions (`wodPersistence.test.js`).
+same-day sessions (`wodPersistence.test.js`). Same coverage for recipes
+(`recipeProtection.test.js`, `recipeValidation.test.js`, `recipePersistence.test.js`) - the live
+Spoonacular search itself isn't exercised by the integration suite (no API key needed to run
+`npm run test:integration`), only its auth protection and the save/read/update/delete flow once a
+result has been picked; `spoonacularMapper.test.js` (a unit test) covers the Spoonacular ->
+Recipe field mapping offline.
 
 ## API summary
 
@@ -93,5 +103,11 @@ Base URL: `/api`. Full request/response shapes, JSON examples, and error codes:
 | POST | `/api/admin/wods` | Coach | `201 { wod }` / `409` if `(session_date, time_slot)` already taken |
 | PUT | `/api/admin/wods/:id` | Coach | `{ wod }` |
 | DELETE | `/api/admin/wods/:id` | Coach | `204` |
+| GET | `/api/recipes` | Public | `{ recipes: [...] }` |
+| GET | `/api/recipes/:id` | Public | `{ recipe: {...} }` |
+| GET | `/api/admin/recipes/search?query=` | Coach | `{ results: [...] }` - Spoonacular, not yet saved |
+| POST | `/api/admin/recipes` | Coach | `201 { recipe }` |
+| PUT | `/api/admin/recipes/:id` | Coach | `{ recipe }` |
+| DELETE | `/api/admin/recipes/:id` | Coach | `204` |
 
 Admin routes require `Authorization: Bearer <token>` (the `token` returned by `POST /api/auth/login`).
