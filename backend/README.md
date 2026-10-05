@@ -9,7 +9,9 @@ own Optional-tier and still not implemented - see
 
 Architecture: [docs/03-technical-documentation.md](../docs/03-technical-documentation.md). Precise,
 up-to-date request/response contract (the one actually implemented - shared with Panaki for the
-front-end): [API_CONTRACT.md](./API_CONTRACT.md).
+front-end): [API_CONTRACT.md](./API_CONTRACT.md). Importable Postman collection, every endpoint
+with example bodies (login first - it saves the token for the rest of the collection
+automatically): [docs/postman/BoxTrack.postman_collection.json](../docs/postman/BoxTrack.postman_collection.json).
 
 A date can have **more than one session** (e.g. a 6am and a 6pm class with different content) - the
 uniqueness key is `(session_date, time_slot)`, not the date alone. `time_slot` is required.
