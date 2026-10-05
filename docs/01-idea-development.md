@@ -45,7 +45,7 @@ to move fast, it defaults to the lead above.
 | **Communication tool** | Discord (main channel with the team **and the sponsor**, Timothé Garde - daily check-ins, quick decisions, questions, and out-of-meeting validations) |
 | **Task tracking tool** | Notion (backlog, meeting notes, progress tracking, internal team documentation) |
 | **Shared resources** | Google Drive (exported mockups, reference documents, screenshots, materials shared with the sponsor) |
-| **Version control** | Git + GitHub (feature branches, pull requests reviewed by the other member before merge into `main`) |
+| **Version control** | Git + GitHub (feature branches, pull requests reviewed by the other member before merge into `dev`; validated sprint releases are then merged into `main`) |
 | **Documentation** | Markdown files in the repository (`/docs`), Figma for wireframes/prototype |
 | **Weekly sync** | Fixed day: Friday afternoon, indicative time ~14:30 (adjustable by agreement). Agenda: progress · blockers · validations · next step. Timothé Garde is available on Discord for feedback/validation outside formal meetings. |
 | **Working norms** | Short daily async update on Discord (what was done / blockers / next), Notion backlog groomed at the Friday sync against the 10-week schedule, PR review required before merge, commit messages in English following Conventional Commits style |
@@ -54,17 +54,29 @@ to move fast, it defaults to the lead above.
 
 | Stakeholder | Role | Impact on the project |
 |---|---|---|
-| **Timothé Garde** | Client / sponsor (commanditaire) - owner & coach, CrossFit LAB | High - defines the real-world requirements, validates the MVP against actual daily use (WOD publishing, scoring, the `/screen` TV view), and is the intended long-term user after the defense. |
+| **Timothé Garde** | Client / sponsor (commanditaire) - owner & coach, CrossFit LAB | High - defines the real-world requirements, validates the Core V1 WOD workflow and `/screen` TV view, prioritizes optional features, and is the intended long-term user after the defense. |
 | **Kevin Rigal & Panaki Gillot** | Project team - developers | High - responsible for design, development, testing, and delivery of the MVP within the 10-week timeline. |
 | **DWWM formation tutor(s)** *(Thomas Jondeau, Sofian Messaoui)* | Pedagogical supervisor | Medium - reviews progress against the RNCP 37674 blocks, gives technical guidance and unblocks methodology questions during the formation. |
 | **Examination jury (soutenance)** | External evaluator | High at defense time - certifies competency validation based on the live demo (especially the `/screen` view), the documentation, and the Q&A. |
-| **CrossFit LAB athletes/members** | Indirect end users | Medium - consume the public leaderboard, WOD, and TV view daily; their usability feedback (readability from 5-8m, clarity of the leaderboard) validates whether the MVP solves the stated problem. |
+| **CrossFit LAB athletes/members** | Indirect end users | Medium - consume the public WOD and TV view; their usability feedback (clarity on mobile and readability from 5-8m) validates whether the MVP solves the stated problem. |
 
 ---
 
 ## 2. Brainstorming & Idea Evaluation
 
 ### 2.1 Method
+
+Research was divided between individual investigation and a joint comparison session. The team also
+used the sponsor meeting notes and the supplied CrossFit LAB functional specification as primary
+evidence rather than inventing requirements for the selected project.
+
+| Research activity | Owner | Result used in the decision |
+|---|---|---|
+| User and operational research | Both | Reviewed the sponsor's description of the current WhatsApp, whiteboard, and spreadsheet workflow and identified the need for one reliable source of truth. |
+| Front-end and UX feasibility research | Kevin | Compared the principal screens required by each idea and assessed responsive, form, and large-screen constraints. For BoxTrack, the 16:9 `/screen` route was identified as the main UI challenge and differentiator. |
+| Back-end and data feasibility research | Panaki | Sketched the main entities, relationships, access rules, and authentication needs for every idea. This exposed marketplace risk for LocalLoop and stronger relational depth for BoxTrack. |
+| Group evaluation session | Both | Agreed on shared criteria, scored every idea, challenged each other's estimates, and selected BoxTrack only after comparing totals and risks. |
+| External stakeholder input | Timothé Garde | Confirmed the CrossFit LAB context, the need for simple coach usage, public WOD display, and a TV-ready view; optional features remain secondary to a reliable Core V1. |
 
 We combined three techniques to generate and stress-test ideas:
 
@@ -117,6 +129,15 @@ Even though both members share full-stack ownership over the project as a whole 
 
 This split carried into the ranking discussion: BoxTrack was the idea both members independently rated highest on their respective side (UI ambition on the front-end side, data-model depth on the back-end side), which reinforced the final decision.
 
+### 2.6 Challenges and Opportunities Identified During Evaluation
+
+| Idea | Main challenge / risk | Opportunity | Decision |
+|---|---|---|---|
+| **BoxTrack** | Learning the CrossFit vocabulary, modelling three session phases across six WOD formats, keeping the coach form under five minutes, and guaranteeing a zero-scroll TV layout. | Real sponsor, immediate daily value, strong full-stack coverage, and an unusual live demonstration. | **Selected**, with a prioritized Core V1 and optional features deferred. |
+| **ShiftEase** | Scheduling conflicts, labour-rule edge cases, and permissions can expand quickly. | Clear operational value for small teams. | Rejected because the use case was less differentiated and had no confirmed sponsor. |
+| **StudyDeck** | Easy to build a basic version but difficult to distinguish it from many existing flashcard products. | Low delivery risk and good mobile potential. | Rejected because it offered less relational and UX depth for the final defence. |
+| **LocalLoop** | Trust, liability, availability conflicts, moderation, and geolocation create marketplace-level scope. | Strong community impact if operated at scale. | Rejected because it was too risky for two learners in the available time. |
+
 ---
 
 ## 3. Decision & Refinement - Selected MVP: BoxTrack
@@ -139,9 +160,11 @@ Per the official cahier des charges (v1.0, signed off by Timothé Garde), BoxTra
 
 ### 3.3 Target Audience / Users
 
-- **Primary sponsor / admin (Coach):** Timothé Garde, owner of CrossFit LAB - manages WODs, scores, and athletes.
-- **Visitors (public, no account):** members and prospects checking the WOD of the day, the leaderboard, or the historical results, from a phone or the gym's screen.
-- **Athletes (optional, out-of-MVP-scope stretch):** could eventually get a personal login to see their own history.
+- **Primary sponsor / admin (Coach):** Timothé Garde, owner of CrossFit LAB - creates, edits, and publishes structured WODs.
+- **Other coaches (admin users):** use the same simple workflow from a phone without technical training.
+- **Visitors (public, no account):** members and prospects checking today's or a previous WOD from a phone or computer.
+- **Gym audience:** athletes viewing the autonomous `/screen` display during a class.
+- **Athletes with personal data (optional):** may be managed for scores and leaderboards after Core V1; self-service accounts remain out of scope.
 
 ### 3.4 Type of Application
 
@@ -207,11 +230,33 @@ Per the official cahier des charges, V1 scope is split into a **Core** tier that
 | Tight 10-week timeline shared across 2 people with overlapping full-stack roles | Maintain a strict MoSCoW-prioritized Notion backlog, weekly re-planning at the Friday sync, and split feature ownership per sprint to avoid duplicated or blocked work. |
 | Deployment/HTTPS/environment configuration issues discovered too late | Deploy a minimal skeleton to Railway/Render as early as Sprint 2, not only at the end, so infrastructure issues surface early. |
 | Scope creep (e.g. adding the optional athlete portal or analytics mid-project) | Explicitly track "nice-to-have" ideas in a separate Notion "Icebox" list, reviewed only after all Core V1 features are done. |
-| Coordination gaps between two members both working full-stack | Daily async Discord updates + mandatory PR review before merge to `main`, so both members stay aware of the current state of the codebase. |
+| Coordination gaps between two members both working full-stack | Daily async Discord updates + mandatory PR review before merge to `dev`, so both members stay aware of the current state of the codebase. |
+
+### 3.9 Opportunities and Validation Strategy
+
+- **Immediate operational value:** one publication replaces several manual channels and can be reused daily.
+- **Strong demonstration value:** the same WOD can be created in admin and shown immediately on the public and TV views during the defence.
+- **Progressive delivery:** scores, athlete management, announcements, and QR codes can be added independently after Core V1 without redesigning the product.
+- **Real stakeholder feedback:** weekly Friday reviews with Timothé Garde allow vocabulary, form speed, readability, and optional-feature priorities to be validated early.
+- **Potential life after school:** a reliable single-box release can remain in real use and later become the basis for a broader product, without making multi-box support part of the current MVP.
 
 ---
 
-## 4. Summary
+## 4. Stage 1 Requirements Traceability
+
+| Holberton task | Required evidence | Where it is documented |
+|---|---|---|
+| **Task 0 - Team formation & roles** | Members, initial and technical roles, rationale, collaboration norms, tools, stakeholders | Sections 1.1-1.4 |
+| **Task 1 - Brainstorming & idea evaluation** | Individual and group research, methods, ideas, criteria, ranking, challenges and risks | Sections 2.1-2.6 |
+| **Task 2 - Decision & refinement** | Selected MVP, problem, solution, users, application type, rationale, SMART goals, scope, risks and mitigations | Sections 3.1-3.9 |
+| **Task 3 - Documentation** | One structured report summarizing the complete idea-development process | This document, sections 1-5 |
+
+Before requesting manual review, the team verifies that the submitted GitHub URL points to this file
+on `main`, all tables render correctly, and the scope matches the sponsor specification.
+
+---
+
+## 5. Summary
 
 **BoxTrack** is a web application built for CrossFit LAB (Toulouse) that replaces WhatsApp/whiteboard/Google-Sheet chaos with a single source of truth for the daily session. Per the official cahier des charges (v1.0), the coach, Timothé Garde, gets a protected admin space to publish each session's full structure - Warm-Up, Skill/Strength, and the WOD itself, across 6 supported formats - in under 5 minutes without training; members and visitors get free public access to that session, with simple navigation to past ones, plus a broadcast-style `/screen` route purpose-built for the gym's TV. Score entry, an auto-ranked leaderboard, athlete management, an Announcements screen, and a QR Codes screen are explicitly Optional: valuable, but only built once the Core tier is fully done and demoed.
 
