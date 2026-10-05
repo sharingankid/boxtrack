@@ -53,11 +53,30 @@ uptime checks).
 ## Tests
 
 ```bash
-npm test
+npm test               # unit tests - pure functions, no database needed
+npm run test:integration   # protected access, validation, persistence - needs a real database
 ```
 
-Unit tests only for now (no live database required) - see `tests/`. Integration tests against a
-real Postgres instance are the next step (see `docs/03-technical-documentation.md §5.2`).
+Unit tests (`tests/*.test.js`) cover pure logic: session assembly, token extraction, error
+formatting.
+
+Integration tests (`tests/integration/`) run the real Express app with Supertest against a real
+Postgres database - they `TRUNCATE` every table before each test, so **never point them at your dev
+database**:
+
+```bash
+createdb boxtrack_test
+cp .env.test.example .env.test
+# edit .env.test: set DATABASE_URL to the boxtrack_test database
+psql "$DATABASE_URL" -f db/schema.sql   # no seed - tests create their own fixtures
+npm run test:integration
+```
+
+They cover exactly the three things the CDC's Core V1 needs proven: admin routes reject missing/bad
+tokens and accept valid ones (`auth.test.js`, `wodProtection.test.js`), every validation rule and
+the `(session_date, time_slot)` conflict (`wodValidation.test.js`), and that a full nested session
+round-trips correctly through create/read/update/delete, including `/wods/today` across multiple
+same-day sessions (`wodPersistence.test.js`).
 
 ## API summary
 
