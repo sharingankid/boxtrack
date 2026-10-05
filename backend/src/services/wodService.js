@@ -22,12 +22,10 @@ function todayIsoDate() {
   return new Date().toISOString().slice(0, 10);
 }
 
+// A date can have more than one session (different time slots) - always
+// returns an array, empty if nothing is published yet, never a 404.
 async function getToday() {
-  const wod = await wodModel.findBySessionDate(todayIsoDate());
-  if (!wod) {
-    throw new ApiError(404, 'NOT_FOUND', 'No session published for today yet');
-  }
-  return wod;
+  return wodModel.findAllBySessionDate(todayIsoDate());
 }
 
 async function getById(id) {
@@ -46,6 +44,9 @@ async function create(data, userId) {
   if (!data.session_date) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'session_date is required');
   }
+  if (!data.time_slot) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'time_slot is required - a date can have more than one session');
+  }
   assertValidSkillStrength(data.skill_strength);
   assertValidFormat(data.wod, { required: false });
 
@@ -53,7 +54,7 @@ async function create(data, userId) {
     return await wodModel.create(data, userId);
   } catch (err) {
     if (err.code === '23505') {
-      throw new ApiError(409, 'DATE_ALREADY_HAS_SESSION', 'A session already exists for this date');
+      throw new ApiError(409, 'SLOT_ALREADY_HAS_SESSION', 'A session already exists for this date and time slot');
     }
     throw err;
   }
@@ -71,7 +72,7 @@ async function update(id, data) {
     return updated;
   } catch (err) {
     if (err.code === '23505') {
-      throw new ApiError(409, 'DATE_ALREADY_HAS_SESSION', 'A session already exists for this date');
+      throw new ApiError(409, 'SLOT_ALREADY_HAS_SESSION', 'A session already exists for this date and time slot');
     }
     throw err;
   }

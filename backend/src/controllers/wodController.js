@@ -2,7 +2,7 @@ const wodService = require('../services/wodService');
 
 async function getToday(req, res, next) {
   try {
-    res.status(200).json({ wod: await wodService.getToday() });
+    res.status(200).json({ wods: await wodService.getToday() });
   } catch (err) {
     next(err);
   }

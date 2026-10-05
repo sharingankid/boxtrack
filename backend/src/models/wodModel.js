@@ -16,10 +16,18 @@ async function fetchFullWod(client, wodId) {
   return assemble(wodRow, skillStrengthResult.rows[0] || null, wodBlockResult.rows[0] || null, movementsResult.rows);
 }
 
-async function findBySessionDate(sessionDate) {
-  const { rows } = await pool.query('SELECT id FROM wods WHERE session_date = $1', [sessionDate]);
-  if (!rows[0]) return null;
-  return fetchFullWod(pool, rows[0].id);
+// A date can have more than one session (different time slots), so this
+// returns an array - possibly empty, never null.
+async function findAllBySessionDate(sessionDate) {
+  const { rows } = await pool.query(
+    'SELECT id FROM wods WHERE session_date = $1 ORDER BY time_slot',
+    [sessionDate]
+  );
+  const wods = [];
+  for (const row of rows) {
+    wods.push(await fetchFullWod(pool, row.id));
+  }
+  return wods;
 }
 
 async function findById(id) {
@@ -180,4 +188,4 @@ async function remove(id) {
   return rowCount > 0;
 }
 
-module.exports = { findBySessionDate, findById, listSummaries, create, update, remove };
+module.exports = { findAllBySessionDate, findById, listSummaries, create, update, remove };
