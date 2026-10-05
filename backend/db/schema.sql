@@ -28,15 +28,21 @@ CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 
 -- One row per calendar session (Warm-Up fields embedded directly - see
 -- docs/03-technical-documentation.md §2.3 "Key design choices").
+--
+-- A box can run several distinct sessions on the same date (e.g. 6am/12pm/6pm
+-- classes with different content), so the uniqueness key is (date, time_slot),
+-- not date alone - confirmed with the team on 2026-10-05, overturning the
+-- original "one session per date" assumption in docs/03.
 CREATE TABLE wods (
     id               SERIAL PRIMARY KEY,
-    session_date     DATE NOT NULL UNIQUE,
-    time_slot        TEXT,
+    session_date     DATE NOT NULL,
+    time_slot        TEXT NOT NULL,
     warmup_general   TEXT,
     warmup_specific  TEXT,
     created_by       INTEGER NOT NULL REFERENCES users(id),
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+    updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (session_date, time_slot)
 );
 
 CREATE TABLE skill_strength_blocks (

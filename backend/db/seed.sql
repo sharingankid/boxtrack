@@ -199,10 +199,38 @@ SELECT id, 'AMRAP', '15 min', 'Short and intense - pick a round pace you can hol
 FROM new_wod;
 
 INSERT INTO movements (wod_id, phase, movement_name, detail, order_index)
-SELECT id, 'skill_strength', 'Deadlift', '3x5, moderate load', 0 FROM wods WHERE session_date = CURRENT_DATE;
+SELECT id, 'skill_strength', 'Deadlift', '3x5, moderate load', 0 FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00';
 INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE), 'wod', 'Deadlift', '10 reps @ 60/40 kg', 0),
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE), 'wod', 'Burpee', '10 reps', 1),
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE), 'wod', 'Box Jump', '10 reps @ 24/20 in', 2);
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00'), 'wod', 'Deadlift', '10 reps @ 60/40 kg', 0),
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00'), 'wod', 'Burpee', '10 reps', 1),
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00'), 'wod', 'Box Jump', '10 reps @ 24/20 in', 2);
+
+-- Today, second slot: demonstrates that a date can hold more than one
+-- session (date, time_slot) is the real uniqueness key, not date alone.
+WITH new_wod AS (
+    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    VALUES (
+        CURRENT_DATE,
+        '06:00',
+        '3 min easy bike + arm circles',
+        'Empty-bar press x10, light row intervals',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    )
+    RETURNING id
+), ss AS (
+    INSERT INTO skill_strength_blocks (wod_id, kind, instructions)
+    SELECT id, 'skill', 'Strict press technique - brace before every rep, no leg drive.'
+    FROM new_wod
+    RETURNING wod_id
+)
+INSERT INTO wod_blocks (wod_id, format, duration_or_target, notes)
+SELECT id, 'EMOM', '10 min', 'Early class, smaller/faster format on purpose.'
+FROM new_wod;
+
+INSERT INTO movements (wod_id, phase, movement_name, detail, order_index)
+SELECT id, 'skill_strength', 'Strict Press', '3x5 @ light load', 0 FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00';
+INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00'), 'wod', 'Row', '15 cal', 0),
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00'), 'wod', 'Strict Press', '8 reps @ 30/20 kg', 1);
 
 COMMIT;

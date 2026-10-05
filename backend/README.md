@@ -5,7 +5,12 @@ management (Warm-Up / Skill-Strength / WOD, 6 formats). Scores, athletes, announ
 codes are Optional-tier and not implemented yet - see
 [docs/01-idea-development.md §3.7](../docs/01-idea-development.md#37-scope).
 
-Architecture and full endpoint reference: [docs/03-technical-documentation.md](../docs/03-technical-documentation.md).
+Architecture: [docs/03-technical-documentation.md](../docs/03-technical-documentation.md). Precise,
+up-to-date request/response contract (the one actually implemented - shared with Panaki for the
+front-end): [API_CONTRACT.md](./API_CONTRACT.md).
+
+A date can have **more than one session** (e.g. a 6am and a 6pm class with different content) - the
+uniqueness key is `(session_date, time_slot)`, not the date alone. `time_slot` is required.
 
 ## Requirements
 
@@ -23,7 +28,7 @@ cp .env.example .env
 
 createdb boxtrack   # or: psql -c "CREATE DATABASE boxtrack;"
 psql "$DATABASE_URL" -f db/schema.sql
-psql "$DATABASE_URL" -f db/seed.sql   # optional - demo coach + 7 realistic sessions
+psql "$DATABASE_URL" -f db/seed.sql   # optional - demo coach + 8 realistic sessions (incl. 2 same-day slots)
 ```
 
 Demo coach login (only if you ran `seed.sql`): `coach@crossfitlab.fr` / `CoachDemo2026!`
@@ -56,17 +61,18 @@ real Postgres instance are the next step (see `docs/03-technical-documentation.m
 
 ## API summary
 
-Base URL: `/api`. Full request/response shapes: `docs/03-technical-documentation.md §4.2`.
+Base URL: `/api`. Full request/response shapes, JSON examples, and error codes:
+**[API_CONTRACT.md](./API_CONTRACT.md)**.
 
-| Method | Path | Auth |
-|---|---|---|
-| POST | `/api/auth/login` | Public |
-| POST | `/api/auth/logout` | Coach |
-| GET | `/api/wods/today` | Public |
-| GET | `/api/wods?from=&to=` | Public |
-| GET | `/api/wods/:id` | Public |
-| POST | `/api/admin/wods` | Coach |
-| PUT | `/api/admin/wods/:id` | Coach |
-| DELETE | `/api/admin/wods/:id` | Coach |
+| Method | Path | Auth | Returns |
+|---|---|---|---|
+| POST | `/api/auth/login` | Public | `{ token, user }` |
+| POST | `/api/auth/logout` | Coach | `204` |
+| GET | `/api/wods/today` | Public | `{ wods: [...] }` - zero, one, or more (one per time slot) |
+| GET | `/api/wods?from=&to=` | Public | `{ wods: [...] }` (summaries, for history) |
+| GET | `/api/wods/:id` | Public | `{ wod: {...} }` (full nested session) |
+| POST | `/api/admin/wods` | Coach | `201 { wod }` / `409` if `(session_date, time_slot)` already taken |
+| PUT | `/api/admin/wods/:id` | Coach | `{ wod }` |
+| DELETE | `/api/admin/wods/:id` | Coach | `204` |
 
 Admin routes require `Authorization: Bearer <token>` (the `token` returned by `POST /api/auth/login`).
