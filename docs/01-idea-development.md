@@ -32,8 +32,8 @@ project. To avoid two people redundantly re-deciding the same UI or data questio
 
 | Member | Technical role | Why this split |
 |---|---|---|
-| **Kevin Rigal** | Fullstack developer - **Front-end / UX lead** | Owned the UI-feasibility read on every candidate idea during brainstorming (screen sketches, `/screen` broadcast-view complexity). Leads the Figma prototype, the responsive CSS work, and the `/screen` broadcast view - the project's most demanding UI requirement. |
-| **Panaki Gillot** | Fullstack developer - **Back-end / Data lead** | Owned the data-model read on every candidate idea during brainstorming (entities, relations, RNCP C4/C5/C6 alignment). Leads the database schema, the REST API, and authentication (JWT/bcrypt). |
+| **Kevin Rigal** | Fullstack developer - **Back-end / Data lead** | Leads the database schema, the REST API, and authentication. Reassigned after Stage 1 (confirmed 2026-10-05) - during brainstorming Kevin had owned the front-end/UX read (see [§2.5](#25-front-end--back-end-split-during-this-phase)), but technical leads were swapped once implementation started. |
+| **Panaki Gillot** | Fullstack developer - **Front-end / UX lead** | Leads the Figma prototype, the responsive CSS work, and the `/screen` broadcast view - the project's most demanding UI requirement. Reassigned after Stage 1 (confirmed 2026-10-05) - during brainstorming Panaki had owned the data-model read (see [§2.5](#25-front-end--back-end-split-during-this-phase)). |
 
 Both members still implement across the stack on every sprint; when a decision needs a single owner
 to move fast, it defaults to the lead above.

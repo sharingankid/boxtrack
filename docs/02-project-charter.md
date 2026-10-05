@@ -18,7 +18,7 @@ content that already lives in the Stage 1 document.
 
 | Charter element | Summary | Full detail |
 |---|---|---|
-| **Team & Technical Roles** | 2-person team, shared full-stack. Kevin Rigal is temporary Project Manager and Front-end/UX lead; Panaki Gillot is Back-end/Data lead. | [01-idea-development.md §1](01-idea-development.md#1-team-formation) |
+| **Team & Technical Roles** | 2-person team, shared full-stack. Kevin Rigal is temporary Project Manager and Back-end/Data lead; Panaki Gillot is Front-end/UX lead (reassigned after Stage 1, confirmed 2026-10-05). | [01-idea-development.md §1](01-idea-development.md#1-team-formation) |
 | **Stakeholders** | Timothé Garde (client/sponsor), the project team, DWWM tutor(s), the examination jury, and CrossFit LAB's athletes/members. | [01-idea-development.md §1.4](01-idea-development.md#14-stakeholders) |
 | **Problem & Solution** | Centralize the daily session (Warm-Up, Skill/Strength, WOD) and its public/TV display for CrossFit LAB - per the official cahier des charges v1.0. Scores/leaderboard, athlete management, Announcements, and QR Codes are Optional. | [01-idea-development.md §3.1-3.2](01-idea-development.md#31-problem) |
 | **Objectives (SMART goals)** | Full session WOD entry, 3 phases/6 formats (wk 5); public WOD display + history (wk 6); broadcast `/screen` (wk 7); secure admin access (wk 8). | [01-idea-development.md §3.6](01-idea-development.md#36-key-features--smart-goals) |
