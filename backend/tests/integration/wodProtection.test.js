@@ -14,7 +14,9 @@ describe('Admin WOD routes - protected access', () => {
   });
 
   it('rejects POST /admin/wods with no Authorization header', async () => {
-    const res = await request(app).post('/api/admin/wods').send({ session_date: '2026-11-01', time_slot: '18:00' });
+    const res = await request(app)
+      .post('/api/admin/wods')
+      .send({ session_date: '2026-11-01', time_slot: '18:00' });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('UNAUTHENTICATED');
   });

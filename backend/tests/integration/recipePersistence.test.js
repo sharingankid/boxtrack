@@ -64,7 +64,9 @@ describe('Recipe persistence', () => {
       .send(FULL_RECIPE);
     const id = createRes.body.recipe.id;
 
-    const deleteRes = await request(app).delete(`/api/admin/recipes/${id}`).set('Authorization', `Bearer ${token}`);
+    const deleteRes = await request(app)
+      .delete(`/api/admin/recipes/${id}`)
+      .set('Authorization', `Bearer ${token}`);
     expect(deleteRes.status).toBe(204);
 
     const getRes = await request(app).get(`/api/recipes/${id}`);
@@ -72,8 +74,14 @@ describe('Recipe persistence', () => {
   });
 
   it('GET /recipes lists every saved recipe, newest first', async () => {
-    await request(app).post('/api/admin/recipes').set('Authorization', `Bearer ${token}`).send({ name: 'First', calorie: 100 });
-    await request(app).post('/api/admin/recipes').set('Authorization', `Bearer ${token}`).send({ name: 'Second', calorie: 200 });
+    await request(app)
+      .post('/api/admin/recipes')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'First', calorie: 100 });
+    await request(app)
+      .post('/api/admin/recipes')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Second', calorie: 200 });
 
     const res = await request(app).get('/api/recipes');
     expect(res.status).toBe(200);

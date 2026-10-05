@@ -53,7 +53,15 @@ npm start       # production
 ```
 
 `GET /health` returns `{ "status": "ok" }` once the server is up (no database query, safe for
-uptime checks).
+uptime checks). Every request is logged (`METHOD path status Nms`) to stdout.
+
+## Lint & format
+
+```bash
+npm run lint        # ESLint, zero warnings expected
+npm run lint:fix     # auto-fix what ESLint can
+npm run format       # Prettier, writes in place (JS only - doesn't touch the Markdown docs)
+```
 
 ## Tests
 

@@ -6,7 +6,11 @@ const VALID_KINDS = ['skill', 'strength'];
 
 function assertValidSkillStrength(skillStrength) {
   if (skillStrength && !VALID_KINDS.includes(skillStrength.kind)) {
-    throw new ApiError(400, 'VALIDATION_ERROR', `skill_strength.kind must be one of ${VALID_KINDS.join(', ')}`);
+    throw new ApiError(
+      400,
+      'VALIDATION_ERROR',
+      `skill_strength.kind must be one of ${VALID_KINDS.join(', ')}`
+    );
   }
 }
 
@@ -45,7 +49,11 @@ async function create(data, userId) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'session_date is required');
   }
   if (!data.time_slot) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'time_slot is required - a date can have more than one session');
+    throw new ApiError(
+      400,
+      'VALIDATION_ERROR',
+      'time_slot is required - a date can have more than one session'
+    );
   }
   assertValidSkillStrength(data.skill_strength);
   assertValidFormat(data.wod, { required: false });
@@ -54,7 +62,11 @@ async function create(data, userId) {
     return await wodModel.create(data, userId);
   } catch (err) {
     if (err.code === '23505') {
-      throw new ApiError(409, 'SLOT_ALREADY_HAS_SESSION', 'A session already exists for this date and time slot');
+      throw new ApiError(
+        409,
+        'SLOT_ALREADY_HAS_SESSION',
+        'A session already exists for this date and time slot'
+      );
     }
     throw err;
   }
@@ -72,7 +84,11 @@ async function update(id, data) {
     return updated;
   } catch (err) {
     if (err.code === '23505') {
-      throw new ApiError(409, 'SLOT_ALREADY_HAS_SESSION', 'A session already exists for this date and time slot');
+      throw new ApiError(
+        409,
+        'SLOT_ALREADY_HAS_SESSION',
+        'A session already exists for this date and time slot'
+      );
     }
     throw err;
   }

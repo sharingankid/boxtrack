@@ -72,7 +72,13 @@ describe('WOD persistence', () => {
     const putRes = await request(app)
       .put(`/api/admin/wods/${id}`)
       .set('Authorization', `Bearer ${token}`)
-      .send({ wod: { format: 'FOR_TIME', duration_or_target: '21-15-9', movements: [{ movement_name: 'Thruster', detail: '30kg' }] } });
+      .send({
+        wod: {
+          format: 'FOR_TIME',
+          duration_or_target: '21-15-9',
+          movements: [{ movement_name: 'Thruster', detail: '30kg' }],
+        },
+      });
 
     expect(putRes.status).toBe(200);
     expect(putRes.body.wod.wod.format).toBe('FOR_TIME');
@@ -90,7 +96,9 @@ describe('WOD persistence', () => {
       .send(FULL_SESSION);
     const id = createRes.body.wod.id;
 
-    const deleteRes = await request(app).delete(`/api/admin/wods/${id}`).set('Authorization', `Bearer ${token}`);
+    const deleteRes = await request(app)
+      .delete(`/api/admin/wods/${id}`)
+      .set('Authorization', `Bearer ${token}`);
     expect(deleteRes.status).toBe(204);
 
     const getRes = await request(app).get(`/api/wods/${id}`);

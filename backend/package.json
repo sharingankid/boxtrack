@@ -9,7 +9,10 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "jest --runInBand --testPathIgnorePatterns=tests/integration",
-    "test:integration": "dotenv -e .env.test -- jest --runInBand --testMatch='**/tests/integration/**/*.test.js'"
+    "test:integration": "dotenv -e .env.test -- jest --runInBand --testMatch='**/tests/integration/**/*.test.js'",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write \"**/*.js\""
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
@@ -20,8 +23,12 @@
   },
   "devDependencies": {
     "dotenv-cli": "^7.4.2",
+    "eslint": "^8.57.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-jest": "^29.16.6",
     "jest": "^29.7.0",
     "nodemon": "^3.1.4",
+    "prettier": "^3.9.9",
     "supertest": "^7.0.0"
   }
 }
