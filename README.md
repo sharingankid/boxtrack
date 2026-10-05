@@ -1,6 +1,6 @@
 # boxtrack
 
-Web app for CrossFit LAB (Toulouse): daily WOD, athlete scores, real-time leaderboard, and a broadcast `/screen` view for the gym's TV.
+Web app for CrossFit LAB (Toulouse): structured daily WOD authoring, public WOD history, protected coach administration, and a broadcast `/screen` view for the gym's TV. Athlete scores and leaderboards are planned as Phase 2 features after the core MVP is reliable.
 
 ## Documentation
 
