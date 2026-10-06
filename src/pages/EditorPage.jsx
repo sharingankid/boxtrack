@@ -1,17 +1,36 @@
 import { useEffect, useState } from 'react'
 import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import DemoBanner from '../components/DemoBanner.jsx'
-import { SESSION_FORMATS, FORMAT_LABELS } from '../lib/format.js'
+import { SESSION_FORMATS, FORMAT_LABELS, toLocalISODate } from '../lib/format.js'
 import { useAuth } from '../state/AuthContext.jsx'
 import { useSessions } from '../state/SessionsContext.jsx'
 
 const blankMovement = () => ({ movement_name: '', detail: '' })
 const emptyForm = () => ({
-  session_date: new Date().toISOString().slice(0, 10), time_slot: '',
+  session_date: toLocalISODate(), time_slot: '',
   warmup: { general: '', specific: '' },
   skill_strength: { kind: 'skill', instructions: '', movements: [blankMovement()] },
   wod: { format: 'AMRAP', duration_or_target: '', notes: '', movements: [blankMovement()] },
 })
+
+const formFromSession = (session) => {
+  const fallback = emptyForm()
+  return {
+    ...fallback,
+    ...session,
+    warmup: { ...fallback.warmup, ...session.warmup },
+    skill_strength: {
+      ...fallback.skill_strength,
+      ...session.skill_strength,
+      movements: session.skill_strength?.movements?.length ? session.skill_strength.movements : [blankMovement()],
+    },
+    wod: {
+      ...fallback.wod,
+      ...session.wod,
+      movements: session.wod?.movements?.length ? session.wod.movements : [blankMovement()],
+    },
+  }
+}
 
 function MovementEditor({ title, items, onChange }) {
   const update = (index, field, value) => onChange(items.map((item, i) => i === index ? { ...item, [field]: value } : item))
@@ -26,7 +45,16 @@ export default function EditorPage() {
   const [form, setForm] = useState(emptyForm)
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
-  useEffect(() => { if (id) getSession(id).then((item) => item && setForm(item)) }, [id, getSession])
+  useEffect(() => {
+    let active = true
+    if (id) getSession(id).then((item) => {
+      if (active && item) setForm(formFromSession(item))
+      if (active && !item) setMessage('Erreur : cette séance est introuvable.')
+    }).catch((err) => {
+      if (active) setMessage(`Erreur : ${err.message}`)
+    })
+    return () => { active = false }
+  }, [id, getSession])
   if (!auth) return <Navigate to="/login" replace />
   const setBlock = (block, field, value) => setForm((current) => ({ ...current, [block]: { ...current[block], [field]: value } }))
   const submit = async (event) => {

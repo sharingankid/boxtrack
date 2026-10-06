@@ -7,7 +7,14 @@ const mode = import.meta.env.VITE_DATA_MODE === 'api' ? 'api' : 'demo'
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(() => {
     const saved = sessionStorage.getItem('boxtrack.auth')
-    return saved ? JSON.parse(saved) : null
+    if (!saved) return null
+    try {
+      const parsed = JSON.parse(saved)
+      return parsed?.token ? parsed : null
+    } catch {
+      sessionStorage.removeItem('boxtrack.auth')
+      return null
+    }
   })
 
   const login = async (credentials) => {
@@ -20,9 +27,12 @@ export function AuthProvider({ children }) {
   }
 
   const logout = async () => {
-    if (mode === 'api' && session?.token) await apiClient.logout(session.token)
-    sessionStorage.removeItem('boxtrack.auth')
-    setSession(null)
+    try {
+      if (mode === 'api' && session?.token) await apiClient.logout(session.token)
+    } finally {
+      sessionStorage.removeItem('boxtrack.auth')
+      setSession(null)
+    }
   }
 
   return <AuthContext.Provider value={{ session, login, logout, mode }}>{children}</AuthContext.Provider>

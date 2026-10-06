@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useState } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
 import { cloneDemoSessions } from '../data/demoSessions.js'
 import { apiClient } from '../services/apiClient.js'
 import { useAuth } from './AuthContext.jsx'
@@ -9,6 +9,8 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 export function SessionsProvider({ children }) {
   const { mode, session: auth } = useAuth()
   const [sessions, setSessions] = useState([])
+  const sessionsRef = useRef(sessions)
+  sessionsRef.current = sessions
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
 
@@ -28,10 +30,11 @@ export function SessionsProvider({ children }) {
   useEffect(() => { refresh() }, [refresh])
 
   const getSession = useCallback(async (id) => {
-    const found = sessions.find((item) => String(item.id) === String(id))
-    if (found?.warmup || mode === 'demo') return found
+    const found = sessionsRef.current.find((item) => String(item.id) === String(id))
+    if (found) return found
+    if (mode === 'demo') return cloneDemoSessions().find((item) => String(item.id) === String(id))
     return apiClient.detail(id)
-  }, [mode, sessions])
+  }, [mode])
 
   const saveSession = async (payload, id) => {
     if (mode === 'demo') {
