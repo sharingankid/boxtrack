@@ -18,12 +18,13 @@ The `panaki` branch contains the React/Vite front-end proposal for the Core V1 f
 - AMRAP, For Time, EMOM, Tabata, Chipper and Strength formats;
 - loading, empty and error states.
 
-The default `demo` mode uses isolated sample sessions from `src/data/demoSessions.js`. It is visibly
+The default `demo` mode uses isolated sample sessions from `frontend/src/data/demoSessions.js`. It is visibly
 labelled and must not be treated as authentication or persistent administration. To connect Kevin's
-Core V1 API, copy `.env.example` to `.env`, set `VITE_DATA_MODE=api`, and configure
+Core V1 API, copy `frontend/.env.example` to `frontend/.env`, set `VITE_DATA_MODE=api`, and configure
 `VITE_API_BASE_URL`.
 
 ```bash
+cd frontend
 npm install
 npm run dev
 ```
@@ -31,6 +32,7 @@ npm run dev
 Quality checks:
 
 ```bash
+cd frontend
 npm run lint
 npm run build
 ```
