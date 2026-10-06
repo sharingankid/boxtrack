@@ -32,8 +32,8 @@ project. To avoid two people redundantly re-deciding the same UI or data questio
 
 | Member | Technical role | Why this split |
 |---|---|---|
-| **Kevin Rigal** | Fullstack developer - **Front-end / UX lead** | Owned the UI-feasibility read on every candidate idea during brainstorming (screen sketches, `/screen` broadcast-view complexity). Leads the Figma prototype, the responsive CSS work, and the `/screen` broadcast view - the project's most demanding UI requirement. |
-| **Panaki Gillot** | Fullstack developer - **Back-end / Data lead** | Owned the data-model read on every candidate idea during brainstorming (entities, relations, RNCP C4/C5/C6 alignment). Leads the database schema, the REST API, and authentication (JWT/bcrypt). |
+| **Kevin Rigal** | Fullstack developer - **Back-end / Data lead** | Leads the database schema, the REST API, and authentication. Reassigned after Stage 1 (confirmed 2026-10-05) - during brainstorming Kevin had owned the front-end/UX read (see [§2.5](#25-front-end--back-end-split-during-this-phase)), but technical leads were swapped once implementation started. |
+| **Panaki Gillot** | Fullstack developer - **Front-end / UX lead** | Leads the Figma prototype, the responsive CSS work, and the `/screen` broadcast view - the project's most demanding UI requirement. Reassigned after Stage 1 (confirmed 2026-10-05) - during brainstorming Panaki had owned the data-model read (see [§2.5](#25-front-end--back-end-split-during-this-phase)). |
 
 Both members still implement across the stack on every sprint; when a decision needs a single owner
 to move fast, it defaults to the lead above.
@@ -198,7 +198,7 @@ These map directly onto the 4 CORE·V1 features from the official cahier des cha
 Per the official cahier des charges, V1 scope is split into a **Core** tier that must ship, and an **Optional** tier built only if time remains once Core is fully done and demoed.
 
 **Core (must ship):**
-- WOD entry (coach only): Warm-Up (general + specific), Skill/Strength (skill or strength, movements, charges/series, instructions), WOD (format - AMRAP/For Time/EMOM/Tabata/Chipper/Strength -, movements/reps, duration or objective, coach remarks), date and time slot. One session per date.
+- WOD entry (coach only): Warm-Up (general + specific), Skill/Strength (skill or strength, movements, charges/series, instructions), WOD (format - AMRAP/For Time/EMOM/Tabata/Chipper/Strength -, movements/reps, duration or objective, coach remarks), date and time slot. One session per `(date, time slot)` - a date can hold more than one session (clarified with the team 2026-10-05, see `backend/API_CONTRACT.md`), e.g. a 6am and a 6pm class with different content.
 - Public, no-login WOD view: each phase shown distinctly, format highlighted, movements/charges/instructions legible, simple navigation to past sessions.
 - Dedicated `/screen` broadcast route (Warm-Up -> Skill -> WOD, fullscreen, 16:9, no interaction, no scroll).
 - Coach authentication (email + password), persistent session, explicit logout, protected admin routes.
@@ -211,6 +211,13 @@ Per the official cahier des charges, V1 scope is split into a **Core** tier that
 - Announcements screen (owner publishes box news/events, public + TV-ready display).
 - QR Codes screen (owner manages labeled QR codes to community links, public + TV-ready display).
 - Coach dashboard (today's session, quick actions) - supports the <5-minute creation goal but isn't itself a CDC line item.
+
+**Sponsor-approved addition, beyond the CDC (confirmed 2026-10-05):**
+- A Recipes ("cuisine") section: Timothé Garde wants a healthy/fit recipe collection members can
+  cook at home. The coach curates recipes (search via the Spoonacular API, pick one to save, or
+  enter one manually), everyone else browses the saved collection with no login required. Runs as
+  its own track in parallel with Core V1, not a reprioritization of the CDC's own Optional tier
+  above - see `backend/API_CONTRACT.md` for the full data model and endpoints.
 
 **Out-of-scope (MVP):**
 - Native mobile app (iOS/Android) - web-responsive only.
