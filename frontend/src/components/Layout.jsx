@@ -1,5 +1,6 @@
 import { NavLink, Outlet } from 'react-router-dom'
 import DemoBanner from './DemoBanner.jsx'
+import ThemeToggle from './ThemeToggle.jsx'
 
 export default function Layout() {
   return (
@@ -10,11 +11,14 @@ export default function Layout() {
           <span className="brand-mark">BT</span>
           <span><strong>BOXTRACK</strong><small>CROSSFIT LAB</small></span>
         </NavLink>
-        <nav aria-label="Navigation principale">
-          <NavLink to="/">Aujourd’hui</NavLink>
-          <NavLink to="/history">Historique</NavLink>
-          <NavLink to="/login">Espace coach</NavLink>
-        </nav>
+        <div className="header-actions">
+          <nav aria-label="Navigation principale">
+            <NavLink to="/">Aujourd’hui</NavLink>
+            <NavLink to="/history">Historique</NavLink>
+            <NavLink to="/login">Espace coach</NavLink>
+          </nav>
+          <ThemeToggle />
+        </div>
       </header>
       <main><Outlet /></main>
       <footer><span>BoxTrack · proposition front-end</span><span>CrossFit LAB — Toulouse</span></footer>
