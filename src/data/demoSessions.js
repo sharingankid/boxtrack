@@ -1,7 +1,9 @@
+import { toLocalISODate } from '../lib/format.js'
+
 const isoDate = (offset = 0) => {
   const date = new Date()
   date.setDate(date.getDate() + offset)
-  return date.toISOString().slice(0, 10)
+  return toLocalISODate(date)
 }
 
 export const demoSessions = [
