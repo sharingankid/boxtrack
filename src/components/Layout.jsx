@@ -13,6 +13,7 @@ export default function Layout() {
         <nav aria-label="Navigation principale">
           <NavLink to="/">Aujourd’hui</NavLink>
           <NavLink to="/history">Historique</NavLink>
+          <NavLink to="/recipes">Recettes</NavLink>
           <NavLink to="/login">Espace coach</NavLink>
         </nav>
       </header>

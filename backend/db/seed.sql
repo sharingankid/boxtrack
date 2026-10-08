@@ -1,7 +1,8 @@
 -- BoxTrack - Core V1 demo seed
 -- One coach account + 7 realistic sessions (today and the 6 days before it,
 -- so GET /api/wods/today always resolves right after seeding) covering every
--- supported WOD format at least once.
+-- supported WOD format at least once, plus 5 curated recipes (real
+-- Spoonacular results, see backend/src/services/spoonacularService.js).
 --
 -- Demo coach login: coach@crossfitlab.fr / CoachDemo2026!
 
@@ -232,5 +233,69 @@ SELECT id, 'skill_strength', 'Strict Press', '3x5 @ light load', 0 FROM wods WHE
 INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
     ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00'), 'wod', 'Row', '15 cal', 0),
     ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00'), 'wod', 'Strict Press', '8 reps @ 30/20 kg', 1);
+
+-- Recipes ("cuisine" section) - 5 real recipes pulled from the Spoonacular
+-- API (see backend/src/services/spoonacularService.js), curated the way a
+-- coach would after an admin search: one per meal moment (breakfast,
+-- post-workout snack, two mains, one side/salad).
+WITH new_recipe AS (
+    INSERT INTO recipes (spoonacular_id, name, calorie, image_url, created_by)
+    VALUES (
+        1021260, 'Simple Protein Pancakes', 147,
+        'https://img.spoonacular.com/recipes/1021260-312x231.jpg',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    )
+    RETURNING id
+)
+INSERT INTO recipe_categories (recipe_id, name)
+SELECT id, cat FROM new_recipe, unnest(ARRAY['morning meal', 'brunch', 'breakfast']) AS cat;
+
+WITH new_recipe AS (
+    INSERT INTO recipes (spoonacular_id, name, calorie, image_url, created_by)
+    VALUES (
+        644045, 'Fruity Yogurt Parfait', 95,
+        'https://img.spoonacular.com/recipes/644045-312x231.jpg',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    )
+    RETURNING id
+)
+INSERT INTO recipe_categories (recipe_id, name)
+SELECT id, cat FROM new_recipe, unnest(ARRAY['morning meal', 'brunch', 'breakfast']) AS cat;
+
+WITH new_recipe AS (
+    INSERT INTO recipes (spoonacular_id, name, calorie, image_url, created_by)
+    VALUES (
+        1847920, 'Healthy Quinoa Salad', 226,
+        'https://img.spoonacular.com/recipes/1847920-312x231.jpg',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    )
+    RETURNING id
+)
+INSERT INTO recipe_categories (recipe_id, name)
+SELECT id, cat FROM new_recipe, unnest(ARRAY['side dish', 'salad', 'snack']) AS cat;
+
+WITH new_recipe AS (
+    INSERT INTO recipes (spoonacular_id, name, calorie, image_url, created_by)
+    VALUES (
+        640828, 'Crispy Panko and Herb Crusted Salmon', 390,
+        'https://img.spoonacular.com/recipes/640828-312x231.jpg',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    )
+    RETURNING id
+)
+INSERT INTO recipe_categories (recipe_id, name)
+SELECT id, cat FROM new_recipe, unnest(ARRAY['lunch', 'main course', 'dinner']) AS cat;
+
+WITH new_recipe AS (
+    INSERT INTO recipes (spoonacular_id, name, calorie, image_url, created_by)
+    VALUES (
+        638764, 'Chipotle Turkey Chili', 549,
+        'https://img.spoonacular.com/recipes/638764-312x231.jpg',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    )
+    RETURNING id
+)
+INSERT INTO recipe_categories (recipe_id, name)
+SELECT id, cat FROM new_recipe, unnest(ARRAY['lunch', 'main course', 'dinner']) AS cat;
 
 COMMIT;
