@@ -4,15 +4,19 @@ import { apiClient } from '../services/apiClient.js'
 const AuthContext = createContext(null)
 const mode = import.meta.env.VITE_DATA_MODE === 'api' ? 'api' : 'demo'
 
+// localStorage, not sessionStorage: the CDC requires a persistent admin
+// session (survives closing the tab/browser), not just a per-tab one. The
+// backend-issued token is itself bounded (7-day TTL, see authService.js) and
+// revocable via explicit logout, so this doesn't weaken that boundary.
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(() => {
-    const saved = sessionStorage.getItem('boxtrack.auth')
+    const saved = localStorage.getItem('boxtrack.auth')
     if (!saved) return null
     try {
       const parsed = JSON.parse(saved)
       return parsed?.token ? parsed : null
     } catch {
-      sessionStorage.removeItem('boxtrack.auth')
+      localStorage.removeItem('boxtrack.auth')
       return null
     }
   })
@@ -21,7 +25,7 @@ export function AuthProvider({ children }) {
     const next = mode === 'api'
       ? await apiClient.login(credentials)
       : { token: 'demo-only-token', user: { id: 0, email: credentials.email || 'coach@demo.local' }, demo: true }
-    sessionStorage.setItem('boxtrack.auth', JSON.stringify(next))
+    localStorage.setItem('boxtrack.auth', JSON.stringify(next))
     setSession(next)
     return next
   }
@@ -30,7 +34,7 @@ export function AuthProvider({ children }) {
     try {
       if (mode === 'api' && session?.token) await apiClient.logout(session.token)
     } finally {
-      sessionStorage.removeItem('boxtrack.auth')
+      localStorage.removeItem('boxtrack.auth')
       setSession(null)
     }
   }

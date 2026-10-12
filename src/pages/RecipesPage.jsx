@@ -17,7 +17,7 @@ export default function RecipesPage() {
       {status === 'ready' && recipes.length === 0 && <StatePanel type="empty" title="Pas encore de recette" message="Les coachs n’ont pas encore publié de recette." />}
       {status === 'ready' && recipes.length > 0 && (
         <div className="recipe-grid">
-          {recipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} />)}
+          {recipes.map((recipe) => <RecipeCard key={recipe.id} recipe={recipe} to={`/recipes/${recipe.id}`} />)}
         </div>
       )}
     </section>

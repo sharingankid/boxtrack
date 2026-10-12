@@ -1,6 +1,6 @@
 const pool = require('../config/db');
 
-function assemble(recipeRow, categoryRows) {
+function assemble(recipeRow, categoryRows, ingredientRows) {
   return {
     id: recipeRow.id,
     spoonacular_id: recipeRow.spoonacular_id,
@@ -8,6 +8,7 @@ function assemble(recipeRow, categoryRows) {
     calorie: recipeRow.calorie,
     image_url: recipeRow.image_url,
     categories: categoryRows.map((c) => ({ name: c.name })),
+    ingredients: ingredientRows.map((i) => ({ name: i.name, detail: i.detail })),
     created_by: recipeRow.created_by,
     created_at: recipeRow.created_at,
     updated_at: recipeRow.updated_at,
@@ -23,7 +24,11 @@ async function fetchFull(client, recipeId) {
     'SELECT * FROM recipe_categories WHERE recipe_id = $1 ORDER BY id',
     [recipeId]
   );
-  return assemble(recipeRow, categoriesResult.rows);
+  const ingredientsResult = await client.query(
+    'SELECT * FROM recipe_ingredients WHERE recipe_id = $1 ORDER BY order_index',
+    [recipeId]
+  );
+  return assemble(recipeRow, categoriesResult.rows, ingredientsResult.rows);
 }
 
 async function findById(id) {
@@ -47,6 +52,18 @@ async function insertCategories(client, recipeId, categories = []) {
   }
 }
 
+async function insertIngredients(client, recipeId, ingredients = []) {
+  let index = 0;
+  for (const ingredient of ingredients) {
+    // eslint-disable-next-line no-await-in-loop
+    await client.query(
+      'INSERT INTO recipe_ingredients (recipe_id, name, detail, order_index) VALUES ($1, $2, $3, $4)',
+      [recipeId, ingredient.name, ingredient.detail || null, index]
+    );
+    index += 1;
+  }
+}
+
 async function create(data, userId) {
   const client = await pool.connect();
   try {
@@ -60,6 +77,7 @@ async function create(data, userId) {
     const recipeId = insert.rows[0].id;
 
     await insertCategories(client, recipeId, data.categories);
+    await insertIngredients(client, recipeId, data.ingredients);
 
     const created = await fetchFull(client, recipeId);
     await client.query('COMMIT');
@@ -105,6 +123,11 @@ async function update(id, data) {
     if (data.categories !== undefined) {
       await client.query('DELETE FROM recipe_categories WHERE recipe_id = $1', [id]);
       await insertCategories(client, id, data.categories);
+    }
+
+    if (data.ingredients !== undefined) {
+      await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [id]);
+      await insertIngredients(client, id, data.ingredients);
     }
 
     const updated = await fetchFull(client, id);

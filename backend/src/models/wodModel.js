@@ -154,7 +154,13 @@ async function update(id, data) {
     const setClause = fields.length ? `${fields.join(', ')}, updated_at = now()` : 'updated_at = now()';
     await client.query(`UPDATE wods SET ${setClause} WHERE id = $${values.length}`, values);
 
-    if (data.skill_strength) {
+    // `undefined` (key omitted) means "leave as-is", `null` means "this
+    // session doesn't have a Skill/Strength phase" (a coach going straight
+    // to the WOD) - the only case that needs the existing block removed.
+    if (data.skill_strength === null) {
+      await client.query('DELETE FROM skill_strength_blocks WHERE wod_id = $1', [id]);
+      await client.query("DELETE FROM movements WHERE wod_id = $1 AND phase = 'skill_strength'", [id]);
+    } else if (data.skill_strength) {
       await client.query(
         `INSERT INTO skill_strength_blocks (wod_id, kind, instructions) VALUES ($1, $2, $3)
          ON CONFLICT (wod_id) DO UPDATE SET kind = EXCLUDED.kind, instructions = EXCLUDED.instructions`,

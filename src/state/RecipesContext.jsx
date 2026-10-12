@@ -52,6 +52,27 @@ export function RecipesProvider({ children }) {
     return saved
   }
 
+  // Saving straight from a Spoonacular search result: ingredients aren't in
+  // the search payload (see apiClient.searchRecipes), only the result's
+  // demo/real ingredients carried alongside it at save time.
+  const importFromSpoonacular = async (result) => {
+    if (mode === 'demo') {
+      const saved = { ...result, id: demoIdRef.current++, categories: asCategoryObjects(result.categories) }
+      setRecipes((current) => [saved, ...current])
+      return saved
+    }
+    const saved = await apiClient.importRecipe(result, auth.token)
+    await refresh()
+    return saved
+  }
+
+  const getRecipe = useCallback(async (id) => {
+    const found = recipes.find((item) => String(item.id) === String(id))
+    if (found) return found
+    if (mode === 'demo') return undefined
+    return apiClient.recipeDetail(id)
+  }, [recipes, mode])
+
   const removeRecipe = async (id) => {
     if (mode === 'demo') {
       setRecipes((current) => current.filter((item) => String(item.id) !== String(id)))
@@ -62,7 +83,7 @@ export function RecipesProvider({ children }) {
   }
 
   return (
-    <RecipesContext.Provider value={{ recipes, status, error, refresh, search, save, removeRecipe, mode }}>
+    <RecipesContext.Provider value={{ recipes, status, error, refresh, search, save, importFromSpoonacular, getRecipe, removeRecipe, mode }}>
       {children}
     </RecipesContext.Provider>
   )

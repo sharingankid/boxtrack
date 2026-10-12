@@ -1,4 +1,7 @@
-export default function RecipeCard({ recipe, action }) {
+import { Link } from 'react-router-dom'
+
+export default function RecipeCard({ recipe, action, to }) {
+  const Title = to ? Link : 'h3'
   return (
     <article className="recipe-card">
       {recipe.image_url
@@ -6,7 +9,7 @@ export default function RecipeCard({ recipe, action }) {
         : <div className="recipe-card-image placeholder" aria-hidden="true" />}
       <div className="recipe-card-body">
         <div className="recipe-card-top">
-          <h3>{recipe.name}</h3>
+          <Title {...(to ? { to } : {})}>{recipe.name}</Title>
           <span className="recipe-calories">{recipe.calorie} kcal</span>
         </div>
         {recipe.categories?.length > 0 && (
