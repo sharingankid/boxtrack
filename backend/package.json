@@ -9,7 +9,7 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "test": "jest --runInBand --testPathIgnorePatterns=tests/integration",
-    "test:integration": "dotenv -e .env.test -- jest --runInBand --testMatch='**/tests/integration/**/*.test.js'",
+    "test:integration": "cross-env NODE_ENV=test dotenv -e .env.test -- jest --runInBand --testMatch='**/tests/integration/**/*.test.js'",
     "lint": "eslint . --ext .js",
     "lint:fix": "eslint . --ext .js --fix",
     "format": "prettier --write \"**/*.js\""
@@ -19,9 +19,11 @@
     "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
+    "express-rate-limit": "^7.5.1",
     "pg": "^8.12.0"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
     "dotenv-cli": "^7.4.2",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^10.1.8",

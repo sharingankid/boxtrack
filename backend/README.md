@@ -16,6 +16,11 @@ automatically): [docs/postman/BoxTrack.postman_collection.json](../docs/postman/
 A date can have **more than one session** (e.g. a 6am and a 6pm class with different content) - the
 uniqueness key is `(session_date, time_slot)`, not the date alone. `time_slot` is required.
 
+`GET /wods/today` resolves "today" in the **Europe/Paris** timezone (the box is in Toulouse), not
+UTC - otherwise the previous day's session would still show for part of the night.
+
+`POST /auth/login` is rate-limited (10 attempts / 15 min / IP) against password guessing.
+
 ## Requirements
 
 - Node.js 18+
@@ -46,6 +51,7 @@ Demo coach login (only if you ran `seed.sql`): `coach@crossfitlab.fr` / `CoachDe
 | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://user:pass@localhost:5432/boxtrack`. |
 | `PORT` | Port the API listens on (defaults to `3000`). |
 | `SPOONACULAR_API_KEY` | Needed only for `GET /admin/recipes/search`. Everything else works without it. |
+| `FRONTEND_URL` | Set in production to lock CORS to the deployed frontend origin. Leave unset in dev to allow any origin. |
 
 ## Running
 
