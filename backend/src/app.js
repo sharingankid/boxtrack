@@ -6,7 +6,9 @@ const requestLogger = require('./middleware/requestLogger');
 
 const app = express();
 
-app.use(cors());
+// Wide open in dev (no FRONTEND_URL set); locked to the deployed frontend
+// origin in production via FRONTEND_URL - see .env.example.
+app.use(cors(process.env.FRONTEND_URL ? { origin: process.env.FRONTEND_URL } : {}));
 app.use(express.json());
 app.use(requestLogger);
 
