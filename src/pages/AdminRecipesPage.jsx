@@ -6,11 +6,30 @@ import RecipeCard from '../components/RecipeCard.jsx'
 import { useAuth } from '../state/AuthContext.jsx'
 import { useRecipes } from '../state/RecipesContext.jsx'
 
-const emptyManualForm = () => ({ name: '', calorie: '', image_url: '', categories: '' })
+const blankIngredient = () => ({ name: '', detail: '' })
+const emptyManualForm = () => ({ name: '', calorie: '', image_url: '', categories: '', ingredients: [blankIngredient()] })
+
+function IngredientEditor({ items, onChange }) {
+  const update = (index, field, value) => onChange(items.map((item, i) => i === index ? { ...item, [field]: value } : item))
+  return (
+    <fieldset className="movement-editor">
+      <legend>Ingrédients (optionnel)</legend>
+      {items.map((item, index) => (
+        <div className="movement-row" key={index}>
+          <span>{String(index + 1).padStart(2, '0')}</span>
+          <input aria-label={`Ingrédient ${index + 1}`} value={item.name} onChange={(e) => update(index, 'name', e.target.value)} placeholder="Ingrédient" />
+          <input aria-label={`Quantité ${index + 1}`} value={item.detail} onChange={(e) => update(index, 'detail', e.target.value)} placeholder="Quantité (ex. 200 g)" />
+          {items.length > 1 && <button type="button" className="icon-button" onClick={() => onChange(items.filter((_, i) => i !== index))} aria-label={`Supprimer l’ingrédient ${index + 1}`}>×</button>}
+        </div>
+      ))}
+      <button type="button" className="add-button" onClick={() => onChange([...items, blankIngredient()])}>+ Ajouter un ingrédient</button>
+    </fieldset>
+  )
+}
 
 export default function AdminRecipesPage() {
   const { session: auth } = useAuth()
-  const { recipes, status, search, save, removeRecipe, mode } = useRecipes()
+  const { recipes, status, search, save, importFromSpoonacular, removeRecipe, mode } = useRecipes()
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState([])
@@ -45,7 +64,7 @@ export default function AdminRecipesPage() {
   const saveResult = async (result) => {
     setSavingId(result.spoonacular_id)
     try {
-      await save(result)
+      await importFromSpoonacular(result)
     } catch (err) {
       setSearchMessage(`Erreur : ${err.message}`)
     } finally {
@@ -63,6 +82,7 @@ export default function AdminRecipesPage() {
         calorie: Number(manualForm.calorie),
         image_url: manualForm.image_url || null,
         categories: manualForm.categories.split(',').map((c) => c.trim()).filter(Boolean),
+        ingredients: manualForm.ingredients.filter((i) => i.name),
       })
       setManualForm(emptyManualForm())
       setManualMessage('Recette ajoutée.')
@@ -129,6 +149,7 @@ export default function AdminRecipesPage() {
             </div>
             <label>Image (URL, optionnel)<input type="url" value={manualForm.image_url} onChange={(e) => setManualForm({ ...manualForm, image_url: e.target.value })} placeholder="https://…" /></label>
             <label>Catégories (séparées par des virgules, optionnel)<input value={manualForm.categories} onChange={(e) => setManualForm({ ...manualForm, categories: e.target.value })} placeholder="post-training, protéiné" /></label>
+            <IngredientEditor items={manualForm.ingredients} onChange={(value) => setManualForm({ ...manualForm, ingredients: value })} />
             <div className="form-actions"><button className="button primary" disabled={manualSaving}>{manualSaving ? 'Enregistrement…' : 'Ajouter la recette'}</button></div>
           </form>
         </section>

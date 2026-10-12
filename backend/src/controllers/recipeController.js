@@ -34,6 +34,15 @@ async function create(req, res, next) {
   }
 }
 
+async function importFromSpoonacular(req, res, next) {
+  try {
+    const recipe = await recipeService.importFromSpoonacular(req.body, req.user.id);
+    res.status(201).json({ recipe });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function update(req, res, next) {
   try {
     const recipe = await recipeService.update(req.params.id, req.body);
@@ -52,4 +61,4 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { search, list, getById, create, update, remove };
+module.exports = { search, list, getById, create, importFromSpoonacular, update, remove };

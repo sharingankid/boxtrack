@@ -103,4 +103,18 @@ CREATE TABLE recipe_categories (
 
 CREATE INDEX idx_recipe_categories_recipe_id ON recipe_categories(recipe_id);
 
+-- Same lightweight pattern as `movements` (owned by one recipe, ordered,
+-- free-text quantity in `detail`) - populated either from Spoonacular's
+-- extendedIngredients (fetched at import time, see spoonacularService.js)
+-- or typed directly by a coach for a manually-entered recipe.
+CREATE TABLE recipe_ingredients (
+    id          SERIAL PRIMARY KEY,
+    recipe_id   INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
+    name        TEXT NOT NULL,
+    detail      TEXT,
+    order_index INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id);
+
 COMMIT;

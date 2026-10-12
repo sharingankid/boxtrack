@@ -31,5 +31,6 @@ export const apiClient = {
   recipeDetail: (id) => request(`/recipes/${id}`).then((data) => data.recipe),
   searchRecipes: (query, token) => request(`/admin/recipes/search?query=${encodeURIComponent(query)}`, { headers: { Authorization: `Bearer ${token}` } }).then((data) => data.results),
   createRecipe: (recipe, token) => request('/admin/recipes', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(recipe) }).then((data) => data.recipe),
+  importRecipe: (result, token) => request('/admin/recipes/import', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(result) }).then((data) => data.recipe),
   removeRecipe: (id, token) => request(`/admin/recipes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
 }
