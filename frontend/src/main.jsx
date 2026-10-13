@@ -3,20 +3,20 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import { AuthProvider } from './state/AuthContext.jsx'
-import { RecipesProvider } from './state/RecipesContext.jsx'
 import { SessionsProvider } from './state/SessionsContext.jsx'
+import { ThemeProvider } from './state/ThemeContext.jsx'
 import './styles.css'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <AuthProvider>
-        <SessionsProvider>
-          <RecipesProvider>
+      <ThemeProvider>
+        <AuthProvider>
+          <SessionsProvider>
             <App />
-          </RecipesProvider>
-        </SessionsProvider>
-      </AuthProvider>
+          </SessionsProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </BrowserRouter>
   </StrictMode>,
 )

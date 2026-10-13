@@ -20,6 +20,14 @@ describe('Admin WOD routes - validation', () => {
     return request(app).post('/api/admin/wods').set('Authorization', `Bearer ${token}`).send(body);
   }
 
+  it.each([[], 'rowing', { general: 10 }, { specific: ['squats'] }].map((value) => [value]))(
+    'rejects an invalid Warm-Up: %j', async (warmup) => {
+      const res = await post({ session_date: '2026-11-01', time_slot: '18:00', warmup });
+      expect(res.status).toBe(400);
+      expect(res.body.error.code).toBe('VALIDATION_ERROR');
+    }
+  );
+
   it('rejects a missing session_date', async () => {
     const res = await post({ time_slot: '18:00' });
     expect(res.status).toBe(400);

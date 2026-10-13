@@ -11,20 +11,20 @@ export default function SessionDetailContent({ session }) {
   return (
     <div className="detail-grid">
       <section className="phase-card warmup">
-        <span className="phase-number">01</span><p className="eyebrow">Mise en route</p><h2>Warm-Up</h2>
+        <p className="eyebrow">Mise en route</p><h2>Warm-Up</h2>
         <h3>Général</h3><p>{session.warmup?.general || 'Non renseigné'}</p>
         <h3>Spécifique</h3><p>{session.warmup?.specific || 'Non renseigné'}</p>
       </section>
       <section className="phase-card skill">
-        <span className="phase-number">02</span><p className="eyebrow">Technique & force</p><h2>{session.skill_strength?.kind === 'strength' ? 'Strength' : 'Skill'}</h2>
+        <p className="eyebrow">Technique & force</p><h2>{session.skill_strength?.kind === 'strength' ? 'Strength' : 'Skill'}</h2>
         <p>{session.skill_strength?.instructions || 'Pas de bloc Skill / Strength pour cette séance.'}</p>
         <MovementList movements={session.skill_strength?.movements} />
       </section>
       <section className="phase-card wod">
-        <span className="phase-number">03</span><p className="eyebrow">Workout of the day</p>
+        <p className="eyebrow">Workout of the day</p>
         <div className="wod-title"><h2>{FORMAT_LABELS[session.wod?.format] || 'WOD'}</h2><strong>{session.wod?.duration_or_target}</strong></div>
         <MovementList movements={session.wod?.movements} />
-        {session.wod?.notes && <p className="coach-note"><strong>Conseil du coach</strong>{session.wod.notes}</p>}
+        {session.wod?.notes && <p className="coach-note"><strong>Notes du coach</strong>{session.wod.notes}</p>}
       </section>
     </div>
   )

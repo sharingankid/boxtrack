@@ -4,6 +4,18 @@ const ApiError = require('../utils/ApiError');
 const VALID_FORMATS = ['AMRAP', 'FOR_TIME', 'EMOM', 'TABATA', 'CHIPPER', 'STRENGTH'];
 const VALID_KINDS = ['skill', 'strength'];
 
+function assertValidWarmup(warmup) {
+  if (warmup === undefined) return;
+  if (!warmup || typeof warmup !== 'object' || Array.isArray(warmup)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'warmup must be an object');
+  }
+  for (const field of ['general', 'specific']) {
+    if (warmup[field] !== undefined && warmup[field] !== null && typeof warmup[field] !== 'string') {
+      throw new ApiError(400, 'VALIDATION_ERROR', `warmup.${field} must be text or null`);
+    }
+  }
+}
+
 function assertValidSkillStrength(skillStrength) {
   if (skillStrength && !VALID_KINDS.includes(skillStrength.kind)) {
     throw new ApiError(
@@ -45,6 +57,7 @@ async function list({ from, to }) {
 }
 
 async function create(data, userId) {
+  assertValidWarmup(data.warmup);
   if (!data.session_date) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'session_date is required');
   }
@@ -73,6 +86,7 @@ async function create(data, userId) {
 }
 
 async function update(id, data) {
+  assertValidWarmup(data.warmup);
   assertValidSkillStrength(data.skill_strength);
   assertValidFormat(data.wod, { required: false });
 

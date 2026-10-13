@@ -52,6 +52,32 @@ describe('WOD persistence', () => {
     expect(getRes.body.wod.wod).toEqual(FULL_SESSION.wod);
   });
 
+  it('updates one Warm-Up field, preserves the other, and can clear both on read-back', async () => {
+    const created = await request(app)
+      .post('/api/admin/wods')
+      .set('Authorization', `Bearer ${token}`)
+      .send(FULL_SESSION);
+    const id = created.body.wod.id;
+    const updated = await request(app)
+      .put(`/api/admin/wods/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ warmup: { general: '5 min bike\nMobility' } });
+    expect(updated.status).toBe(200);
+    const read = await request(app).get(`/api/wods/${id}`);
+    expect(read.body.wod.warmup).toEqual({
+      general: '5 min bike\nMobility', specific: FULL_SESSION.warmup.specific,
+    });
+    expect(read.body.wod.wod).toEqual(FULL_SESSION.wod);
+    const cleared = await request(app)
+      .put(`/api/admin/wods/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ warmup: { general: '', specific: '' } });
+    expect(cleared.status).toBe(200);
+    const empty = await request(app).get(`/api/wods/${id}`);
+    expect(empty.body.wod.warmup).toEqual({ general: '', specific: '' });
+    expect(empty.body.wod.skill_strength).toEqual(FULL_SESSION.skill_strength);
+  });
+
   it('keeps movement order on read-back', async () => {
     const createRes = await request(app)
       .post('/api/admin/wods')

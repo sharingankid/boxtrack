@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "BoxTrack API",
-    "description": "Core V1 (auth + WOD sessions) + Recipes (sponsor-approved addition). See backend/API_CONTRACT.md for the full field-by-field contract. Run 'Login' first - it saves the token into {{token}} automatically for every other request.",
+    "description": "Core V1 (auth + WOD sessions). See backend/API_CONTRACT.md for the full field-by-field contract. Run 'Login' first - it saves the token into {{token}} automatically for every other request.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -117,76 +117,6 @@
           }
         }
       ]
-    },
-    {
-      "name": "Recipes - public",
-      "item": [
-        {
-          "name": "List recipes",
-          "request": { "method": "GET", "url": "{{base_url}}/recipes" }
-        },
-        {
-          "name": "Recipe detail",
-          "request": { "method": "GET", "url": "{{base_url}}/recipes/1" }
-        }
-      ]
-    },
-    {
-      "name": "Recipes - admin (coach)",
-      "item": [
-        {
-          "name": "Search Spoonacular",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": {
-              "raw": "{{base_url}}/admin/recipes/search?query=chicken",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "recipes", "search"],
-              "query": [{ "key": "query", "value": "chicken" }]
-            }
-          }
-        },
-        {
-          "name": "Save a recipe",
-          "request": {
-            "method": "POST",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"spoonacular_id\": 634476,\n  \"name\": \"Bbq Chicken\",\n  \"calorie\": 478,\n  \"image_url\": \"https://img.spoonacular.com/recipes/634476-312x231.jpg\",\n  \"categories\": [\"lunch\", \"main course\"]\n}"
-            },
-            "url": "{{base_url}}/admin/recipes"
-          }
-        },
-        {
-          "name": "Update a recipe",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": { "mode": "raw", "raw": "{\n  \"calorie\": 500,\n  \"categories\": [\"dinner\"]\n}" },
-            "url": "{{base_url}}/admin/recipes/1"
-          }
-        },
-        {
-          "name": "Delete a recipe",
-          "request": {
-            "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": "{{base_url}}/admin/recipes/1"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Misc",
-      "item": [{ "name": "Health check", "request": { "method": "GET", "url": "http://localhost:3000/health" } }]
     }
   ]
 }

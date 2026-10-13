@@ -5,7 +5,7 @@
 set -e
 cd "$(dirname "${BASH_SOURCE[0]}")"
 
-[ -d node_modules ] || (echo "Installing frontend deps..." && npm install)
+[ -d frontend/node_modules ] || (echo "Installing frontend deps..." && npm --prefix frontend install)
 [ -d backend/node_modules ] || (echo "Installing backend deps..." && npm --prefix backend install)
 [ -f backend/.env ] || cp backend/.env.example backend/.env
 
@@ -20,7 +20,7 @@ trap cleanup EXIT INT TERM
 npm --prefix backend run dev &
 BACKEND_PID=$!
 
-npm run dev &
+npm --prefix frontend run dev &
 FRONTEND_PID=$!
 
 echo "BoxTrack API   -> http://localhost:${PORT:-3000}"
