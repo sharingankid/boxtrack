@@ -6,7 +6,7 @@ export default function ThemeToggle({ className = '' }) {
 
   return (
     <button type="button" className={`theme-toggle ${className}`.trim()} onClick={toggleTheme} aria-label={dark ? 'Activer le mode clair' : 'Activer le mode sombre'} title={dark ? 'Mode clair' : 'Mode sombre'}>
-      <span aria-hidden="true">{dark ? '☀' : '☾'}</span>
+      <span>{dark ? 'Clair' : 'Sombre'}</span>
     </button>
   )
 }

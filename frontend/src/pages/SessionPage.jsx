@@ -3,10 +3,12 @@ import { Link, useParams } from 'react-router-dom'
 import SessionDetailContent from '../components/SessionDetailContent.jsx'
 import StatePanel from '../components/StatePanel.jsx'
 import { formatDate } from '../lib/format.js'
+import { useAuth } from '../state/AuthContext.jsx'
 import { useSessions } from '../state/SessionsContext.jsx'
 
 export default function SessionPage() {
   const { id } = useParams()
+  const { session: auth } = useAuth()
   const { getSession } = useSessions()
   const [session, setSession] = useState(null)
   const [error, setError] = useState('')
@@ -17,6 +19,7 @@ export default function SessionPage() {
     <article className="page wrap session-detail">
       <Link className="back-link" to="/history">← Retour à l’historique</Link>
       <header className="session-heading"><div><p className="eyebrow">Séance complète</p><h1>{formatDate(session.session_date)}</h1></div><span className="time-display">{session.time_slot}</span></header>
+      {auth && <Link className="button ghost edit-session" to={`/admin/sessions/${id}/edit`}>Modifier la séance</Link>}
       <SessionDetailContent session={session} />
     </article>
   )
