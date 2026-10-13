@@ -21,6 +21,7 @@ function errorHandler(err, req, res, next) {
     22007: 'A date/time value is invalid',
     22008: 'A date/time value is invalid',
     '22P02': 'A field has an invalid format',
+    23514: 'A field violates a business rule (e.g. end_time must be after start_time)',
   };
   if (err.code in CLIENT_FAULT_PG_CODES) {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: CLIENT_FAULT_PG_CODES[err.code] } });

@@ -5,7 +5,9 @@ const { loginToken } = require('./helpers/auth');
 
 const FULL_SESSION = {
   session_date: '2026-11-02',
-  time_slot: '18:00',
+  start_time: '18:00',
+  end_time: '19:00',
+  title: 'Evening class',
   warmup: { general: '3 min row easy', specific: 'empty bar squats x10' },
   skill_strength: {
     kind: 'skill',
@@ -47,6 +49,9 @@ describe('WOD persistence', () => {
 
     const getRes = await request(app).get(`/api/wods/${id}`);
     expect(getRes.status).toBe(200);
+    expect(getRes.body.wod.start_time).toBe('18:00');
+    expect(getRes.body.wod.end_time).toBe('19:00');
+    expect(getRes.body.wod.title).toBe('Evening class');
     expect(getRes.body.wod.warmup).toEqual(FULL_SESSION.warmup);
     expect(getRes.body.wod.skill_strength).toEqual(FULL_SESSION.skill_strength);
     expect(getRes.body.wod.wod).toEqual(FULL_SESSION.wod);
@@ -87,6 +92,41 @@ describe('WOD persistence', () => {
     expect(putRes.body.wod.skill_strength).toEqual(FULL_SESSION.skill_strength);
     // warmup was not sent - must be untouched
     expect(putRes.body.wod.warmup).toEqual(FULL_SESSION.warmup);
+    // schedule was not sent - must be untouched
+    expect(putRes.body.wod.start_time).toBe('18:00');
+  });
+
+  it('PUT can change the schedule alone', async () => {
+    const createRes = await request(app)
+      .post('/api/admin/wods')
+      .set('Authorization', `Bearer ${token}`)
+      .send(FULL_SESSION);
+    const id = createRes.body.wod.id;
+
+    const putRes = await request(app)
+      .put(`/api/admin/wods/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ start_time: '19:00', end_time: '20:00' });
+
+    expect(putRes.status).toBe(200);
+    expect(putRes.body.wod.start_time).toBe('19:00');
+    expect(putRes.body.wod.end_time).toBe('20:00');
+  });
+
+  it('PUT rejects a schedule change that would put end_time at or before start_time', async () => {
+    const createRes = await request(app)
+      .post('/api/admin/wods')
+      .set('Authorization', `Bearer ${token}`)
+      .send(FULL_SESSION);
+    const id = createRes.body.wod.id;
+
+    const putRes = await request(app)
+      .put(`/api/admin/wods/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ start_time: '19:00', end_time: '18:00' });
+
+    expect(putRes.status).toBe(400);
+    expect(putRes.body.error.code).toBe('VALIDATION_ERROR');
   });
 
   it('DELETE removes the session - a later GET 404s', async () => {
@@ -105,22 +145,57 @@ describe('WOD persistence', () => {
     expect(getRes.status).toBe(404);
   });
 
-  it('GET /wods/today returns every session for today, sorted by time_slot', async () => {
+  it('POST /admin/wods/:id/duplicate copies a session onto a new slot', async () => {
+    const createRes = await request(app)
+      .post('/api/admin/wods')
+      .set('Authorization', `Bearer ${token}`)
+      .send(FULL_SESSION);
+    const id = createRes.body.wod.id;
+
+    const dupRes = await request(app)
+      .post(`/api/admin/wods/${id}/duplicate`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ session_date: '2026-11-09' });
+
+    expect(dupRes.status).toBe(201);
+    expect(dupRes.body.wod.id).not.toBe(id);
+    expect(dupRes.body.wod.session_date).toBe('2026-11-09');
+    expect(dupRes.body.wod.start_time).toBe('18:00');
+    expect(dupRes.body.wod.wod).toEqual(FULL_SESSION.wod);
+  });
+
+  it('POST /admin/wods/:id/duplicate 409s when duplicating onto the exact same slot', async () => {
+    const createRes = await request(app)
+      .post('/api/admin/wods')
+      .set('Authorization', `Bearer ${token}`)
+      .send(FULL_SESSION);
+    const id = createRes.body.wod.id;
+
+    const dupRes = await request(app)
+      .post(`/api/admin/wods/${id}/duplicate`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({});
+
+    expect(dupRes.status).toBe(409);
+    expect(dupRes.body.error.code).toBe('DUPLICATE_SESSION');
+  });
+
+  it('GET /wods/today returns every session for today, sorted by start_time', async () => {
     const todayIso = new Date().toISOString().slice(0, 10);
 
     await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: todayIso, time_slot: '18:00', wod: { format: 'AMRAP' } });
+      .send({ session_date: todayIso, start_time: '18:00', end_time: '19:00', wod: { format: 'AMRAP' } });
     await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: todayIso, time_slot: '06:00', wod: { format: 'EMOM' } });
+      .send({ session_date: todayIso, start_time: '06:00', end_time: '07:00', wod: { format: 'EMOM' } });
 
     const res = await request(app).get('/api/wods/today');
     expect(res.status).toBe(200);
     expect(res.body.wods).toHaveLength(2);
-    expect(res.body.wods.map((w) => w.time_slot)).toEqual(['06:00', '18:00']);
+    expect(res.body.wods.map((w) => w.start_time)).toEqual(['06:00', '18:00']);
   });
 
   it('GET /wods/today returns an empty array (200, not 404) when nothing is published', async () => {
@@ -133,11 +208,11 @@ describe('WOD persistence', () => {
     await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: '2026-01-01', time_slot: '18:00' });
+      .send({ session_date: '2026-01-01', start_time: '18:00', end_time: '19:00' });
     await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: '2026-06-01', time_slot: '18:00' });
+      .send({ session_date: '2026-06-01', start_time: '18:00', end_time: '19:00' });
 
     const res = await request(app).get('/api/wods').query({ from: '2026-05-01', to: '2026-12-31' });
     expect(res.status).toBe(200);

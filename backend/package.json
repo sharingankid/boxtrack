@@ -10,8 +10,8 @@
     "start": "node src/server.js",
     "test": "jest --runInBand --testPathIgnorePatterns=tests/integration",
     "test:integration": "cross-env NODE_ENV=test dotenv -e .env.test -- jest --runInBand --testMatch='**/tests/integration/**/*.test.js'",
-    "lint": "eslint . --ext .js",
-    "lint:fix": "eslint . --ext .js --fix",
+    "lint": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint . --ext .js",
+    "lint:fix": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint . --ext .js --fix",
     "format": "prettier --write \"**/*.js\""
   },
   "dependencies": {
