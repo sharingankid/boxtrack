@@ -33,4 +33,22 @@ export const apiClient = {
   createRecipe: (recipe, token) => request('/admin/recipes', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(recipe) }).then((data) => data.recipe),
   importRecipe: (result, token) => request('/admin/recipes/import', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(result) }).then((data) => data.recipe),
   removeRecipe: (id, token) => request(`/admin/recipes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+
+  listAthletes: (token, { active } = {}) => request(`/admin/athletes${active === undefined ? '' : `?active=${active}`}`, { headers: { Authorization: `Bearer ${token}` } }).then((data) => data.athletes),
+  createAthlete: (athlete, token) => request('/admin/athletes', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(athlete) }).then((data) => data.athlete),
+  updateAthlete: (id, athlete, token) => request(`/admin/athletes/${id}`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(athlete) }).then((data) => data.athlete),
+
+  leaderboard: (wodId) => request(`/wods/${wodId}/leaderboard`),
+  recordScore: (wodId, score, token) => request(`/admin/wods/${wodId}/scores`, { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(score) }).then((data) => data.score),
+  removeScore: (id, token) => request(`/admin/scores/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+
+  listAnnouncements: () => request('/announcements').then((data) => data.announcements),
+  listAllAnnouncements: (token) => request('/admin/announcements', { headers: { Authorization: `Bearer ${token}` } }).then((data) => data.announcements),
+  createAnnouncement: (announcement, token) => request('/admin/announcements', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(announcement) }).then((data) => data.announcement),
+  updateAnnouncement: (id, announcement, token) => request(`/admin/announcements/${id}`, { method: 'PUT', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(announcement) }).then((data) => data.announcement),
+  removeAnnouncement: (id, token) => request(`/admin/announcements/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+
+  listQrCodes: () => request('/qrcodes').then((data) => data.qr_codes),
+  createQrCode: (qrCode, token) => request('/admin/qrcodes', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(qrCode) }).then((data) => data.qr_code),
+  removeQrCode: (id, token) => request(`/admin/qrcodes/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
 }

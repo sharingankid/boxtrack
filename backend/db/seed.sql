@@ -373,4 +373,55 @@ FROM (VALUES
     ('parsley', 'chopped parsley, for serving', 14)
 ) AS t(name, detail, ord);
 
+-- ============================================================
+-- Optional tier demo data
+-- ============================================================
+
+INSERT INTO athletes (first_name, last_name, created_by) VALUES
+    ('Léa', 'Bernard', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Thomas', 'Nguyen', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Camille', 'Petit', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Hugo', 'Moreau', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr'));
+
+INSERT INTO athletes (first_name, last_name, active, created_by) VALUES
+    ('Inès', 'Roux', false, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr'));
+
+-- Scores for today's 18:00 AMRAP session (higher result_value wins).
+INSERT INTO scores (wod_id, athlete_id, category, result_value, recorded_by)
+SELECT
+    (SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00'),
+    athletes.id,
+    t.category,
+    t.result_value,
+    (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+FROM (VALUES
+    ('Bernard', 'RX', 187),
+    ('Nguyen', 'RX', 164),
+    ('Petit', 'Scaled', 142),
+    ('Moreau', 'RX', 201)
+) AS t(last_name, category, result_value)
+JOIN athletes ON athletes.last_name = t.last_name;
+
+INSERT INTO announcements (title, body, created_by) VALUES
+    (
+        'Open Day samedi 14 novembre',
+        'Portes ouvertes toute la journée, amenez un ami pour une séance découverte gratuite.',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    ),
+    (
+        'Fermeture exceptionnelle le 1er novembre',
+        'La box sera fermée pour le jour férié. Reprise normale le lendemain.',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    ),
+    (
+        'Nouveau coach : Marine',
+        'Marine rejoint l''équipe de coachs à partir du mois prochain, spécialisée en haltérophilie.',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    );
+
+INSERT INTO qr_codes (label, url, order_index, created_by) VALUES
+    ('Avis Google', 'https://g.page/r/crossfit-lab-toulouse/review', 0, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Instagram', 'https://instagram.com/crossfitlab.toulouse', 1, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Groupe WhatsApp', 'https://chat.whatsapp.com/crossfitlab-demo', 2, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr'));
+
 COMMIT;

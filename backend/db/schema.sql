@@ -1,8 +1,7 @@
--- BoxTrack - Core V1 schema (PostgreSQL)
+-- BoxTrack schema (PostgreSQL)
 -- Matches the ER diagram in docs/03-technical-documentation.md §2.3.
--- Optional-tier tables (scores, athletes, announcements, qr_codes) are
--- deliberately NOT created here yet - Core V1 only, per the cahier des charges
--- and docs/01-idea-development.md §3.7 (Core before Optional).
+-- Core V1 tables first, Optional-tier tables (athletes, scores,
+-- announcements, qr_codes) below - per the cahier des charges §5/§6.
 
 BEGIN;
 
@@ -116,5 +115,68 @@ CREATE TABLE recipe_ingredients (
 );
 
 CREATE INDEX idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id);
+
+-- ============================================================
+-- Optional tier (cahier des charges §6 "si le temps le permet")
+-- ============================================================
+
+-- Managed exclusively by the coach in V1 - no athlete self-registration
+-- (cahier des charges §6). Soft-delete via `active` so historical scores
+-- stay intact when a member leaves the box.
+CREATE TABLE athletes (
+    id         SERIAL PRIMARY KEY,
+    first_name TEXT NOT NULL,
+    last_name  TEXT NOT NULL,
+    photo_url  TEXT,
+    active     BOOLEAN NOT NULL DEFAULT true,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- One score per athlete per WOD. `result_value` is always numeric so the
+-- leaderboard can `ORDER BY` it directly - the coach enters a time as
+-- MM:SS client-side, converted to seconds before it reaches the API (see
+-- scoreService.js); every other format is a plain number (reps, rounds,
+-- kg). Which direction counts as "better" is derived from the WOD's own
+-- format (ascending for time-based formats, descending otherwise), not
+-- stored per-score, so it can never drift from the WOD it belongs to.
+CREATE TABLE scores (
+    id           SERIAL PRIMARY KEY,
+    wod_id       INTEGER NOT NULL REFERENCES wods(id) ON DELETE CASCADE,
+    athlete_id   INTEGER NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+    category     TEXT NOT NULL CHECK (category IN ('RX', 'Scaled', 'Modified')),
+    result_value NUMERIC NOT NULL CHECK (result_value >= 0),
+    recorded_by  INTEGER NOT NULL REFERENCES users(id),
+    created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (wod_id, athlete_id)
+);
+
+CREATE INDEX idx_scores_wod_id ON scores(wod_id);
+
+-- Owner-published announcements (events, closures, schedule changes...).
+-- `active` lets the coach pull one down without deleting its history.
+CREATE TABLE announcements (
+    id         SERIAL PRIMARY KEY,
+    title      TEXT NOT NULL,
+    body       TEXT,
+    active     BOOLEAN NOT NULL DEFAULT true,
+    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Owner-configured QR codes (Google review link, Instagram, sign-up...),
+-- generated dynamically client-side from `url` - nothing to store but the
+-- destination and a label.
+CREATE TABLE qr_codes (
+    id          SERIAL PRIMARY KEY,
+    label       TEXT NOT NULL,
+    url         TEXT NOT NULL,
+    order_index INTEGER NOT NULL DEFAULT 0,
+    created_by  INTEGER NOT NULL REFERENCES users(id),
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
 
 COMMIT;
