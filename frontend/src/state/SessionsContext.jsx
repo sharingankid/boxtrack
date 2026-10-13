@@ -14,11 +14,15 @@ export function SessionsProvider({ children }) {
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
 
-  const refresh = useCallback(async () => {
-    setStatus('loading')
+  const refresh = useCallback(async ({ silent = false } = {}) => {
+    if (!silent) setStatus('loading')
     setError('')
     try {
-      const data = mode === 'demo' ? (await wait(320), cloneDemoSessions()) : await apiClient.history()
+      // The history endpoint returns summaries; all display/editor consumers
+      // need the nested session, including both Warm-Up fields.
+      const data = mode === 'demo'
+        ? (sessionsRef.current.length ? sessionsRef.current : (await wait(320), cloneDemoSessions()))
+        : await apiClient.history().then((items) => Promise.all(items.map((item) => apiClient.detail(item.id))))
       setSessions(data)
       setStatus('ready')
     } catch (err) {
@@ -31,7 +35,7 @@ export function SessionsProvider({ children }) {
 
   const getSession = useCallback(async (id) => {
     const found = sessionsRef.current.find((item) => String(item.id) === String(id))
-    if (found) return found
+    if (mode === 'demo' && found) return found
     if (mode === 'demo') return cloneDemoSessions().find((item) => String(item.id) === String(id))
     return apiClient.detail(id)
   }, [mode])

@@ -21,7 +21,7 @@ const request = async (path, options = {}) => {
 export const apiClient = {
   login: (credentials) => request('/auth/login', { method: 'POST', body: JSON.stringify(credentials) }),
   logout: (token) => request('/auth/logout', { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
-  today: () => request('/wods/today').then((data) => data.wod),
+  today: () => request('/wods/today').then((data) => data.wods),
   history: () => request('/wods').then((data) => data.wods),
   detail: (id) => request(`/wods/${id}`).then((data) => data.wod),
   create: (session, token) => request('/admin/wods', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: JSON.stringify(session) }).then((data) => data.wod),
