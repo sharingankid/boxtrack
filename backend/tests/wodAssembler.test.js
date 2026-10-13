@@ -23,7 +23,9 @@ describe('assemble', () => {
   const wodRow = {
     id: 1,
     session_date: '2026-10-05',
-    time_slot: '18:00',
+    start_time: '18:00:00',
+    end_time: '19:00:00',
+    title: null,
     warmup_general: 'row easy',
     warmup_specific: 'empty bar squats',
     created_by: 7,
@@ -44,7 +46,9 @@ describe('assemble', () => {
     expect(result).toEqual({
       id: 1,
       session_date: '2026-10-05',
-      time_slot: '18:00',
+      start_time: '18:00',
+      end_time: '19:00',
+      title: null,
       warmup: { general: 'row easy', specific: 'empty bar squats' },
       skill_strength: {
         kind: 'strength',

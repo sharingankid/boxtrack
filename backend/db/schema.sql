@@ -1,15 +1,30 @@
 -- BoxTrack schema (PostgreSQL)
--- Matches the ER diagram in docs/03-technical-documentation.md §2.3.
--- Core V1 tables first, Optional-tier tables (athletes, scores,
--- announcements, qr_codes) below - per the cahier des charges §5/§6.
+-- Matches the ER diagram in docs/03-technical-documentation.md §2.3 for the
+-- tables that haven't changed shape; see backend/API_CONTRACT.md for the
+-- current Session object. Core V1 tables first, Optional-tier tables
+-- (athletes, scores, announcements, qr_codes) below - per the cahier des
+-- charges §5/§6.
+--
+-- This is the canonical "fresh install" script - creates the schema in its
+-- CURRENT, already-migrated shape. An existing V1 database (free-text
+-- `time_slot`, Recipes tables present) must instead run
+-- db/migrations/001_real_schedules_and_remove_recipes.sql, which converts
+-- in place and documents exactly what happens to existing rows. Do not run
+-- both against the same database.
 
 BEGIN;
 
+-- `role` covers every authenticated staff type the box has today: the
+-- owner, coaches, and other staff who need admin access. All three get the
+-- same route access for now (every admin route just requires `requireAuth`)
+-- - the column exists and is enforced so a route can start requiring a
+-- specific role later (see middleware/auth.js's requireRole) without a
+-- schema change. Default stays 'coach' since that's who signs up most often.
 CREATE TABLE users (
     id            SERIAL PRIMARY KEY,
     email         TEXT NOT NULL UNIQUE,
     password_hash TEXT NOT NULL,
-    role          TEXT NOT NULL DEFAULT 'coach' CHECK (role = 'coach'),
+    role          TEXT NOT NULL DEFAULT 'coach' CHECK (role IN ('owner', 'coach', 'staff')),
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -29,19 +44,28 @@ CREATE INDEX idx_sessions_user_id ON sessions(user_id);
 -- docs/03-technical-documentation.md §2.3 "Key design choices").
 --
 -- A box can run several distinct sessions on the same date (e.g. 6am/12pm/6pm
--- classes with different content), so the uniqueness key is (date, time_slot),
--- not date alone - confirmed with the team on 2026-10-05, overturning the
--- original "one session per date" assumption in docs/03.
+-- classes with different content), so the uniqueness key is
+-- (date, start_time), not date alone.
+--
+-- `start_time`/`end_time` are real `TIME` values (not free text) so the
+-- backend can compute "which session is happening right now" and "what's
+-- next" reliably - see scoreService.js's sibling, wodService.js's
+-- `getTvState()`. Both are wall-clock times in the box's own timezone
+-- (Europe/Paris) - there is no UTC conversion anywhere for these, exactly
+-- like `session_date` is a plain calendar date, not a timestamp.
 CREATE TABLE wods (
     id               SERIAL PRIMARY KEY,
     session_date     DATE NOT NULL,
-    time_slot        TEXT NOT NULL,
+    start_time       TIME NOT NULL,
+    end_time         TIME NOT NULL,
+    title            TEXT,
     warmup_general   TEXT,
     warmup_specific  TEXT,
     created_by       INTEGER NOT NULL REFERENCES users(id),
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
-    UNIQUE (session_date, time_slot)
+    UNIQUE (session_date, start_time),
+    CHECK (end_time > start_time)
 );
 
 CREATE TABLE skill_strength_blocks (
@@ -74,47 +98,6 @@ CREATE TABLE movements (
 );
 
 CREATE INDEX idx_movements_wod_phase ON movements(wod_id, phase, order_index);
-
--- Recipes ("cuisine" section) - approved by the sponsor (Timothé Garde) on
--- 2026-10-05, beyond the original cahier des charges scope. Curated by the
--- coach from Spoonacular search results (or entered manually), browsed
--- publicly by members. See backend/API_CONTRACT.md.
-CREATE TABLE recipes (
-    id            SERIAL PRIMARY KEY,
-    spoonacular_id INTEGER,
-    name          TEXT NOT NULL,
-    calorie       INTEGER NOT NULL CHECK (calorie >= 0),
-    image_url     TEXT,
-    created_by    INTEGER NOT NULL REFERENCES users(id),
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at    TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- Per-recipe tags (e.g. Spoonacular's dishTypes: "lunch", "dessert"...) -
--- same lightweight pattern as `movements`: owned by one recipe, not a
--- shared/normalized lookup table, since nothing here needs cross-recipe
--- category management yet.
-CREATE TABLE recipe_categories (
-    id        SERIAL PRIMARY KEY,
-    recipe_id INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    name      TEXT NOT NULL
-);
-
-CREATE INDEX idx_recipe_categories_recipe_id ON recipe_categories(recipe_id);
-
--- Same lightweight pattern as `movements` (owned by one recipe, ordered,
--- free-text quantity in `detail`) - populated either from Spoonacular's
--- extendedIngredients (fetched at import time, see spoonacularService.js)
--- or typed directly by a coach for a manually-entered recipe.
-CREATE TABLE recipe_ingredients (
-    id          SERIAL PRIMARY KEY,
-    recipe_id   INTEGER NOT NULL REFERENCES recipes(id) ON DELETE CASCADE,
-    name        TEXT NOT NULL,
-    detail      TEXT,
-    order_index INTEGER NOT NULL DEFAULT 0
-);
-
-CREATE INDEX idx_recipe_ingredients_recipe_id ON recipe_ingredients(recipe_id);
 
 -- ============================================================
 -- Optional tier (cahier des charges §6 "si le temps le permet")

@@ -16,7 +16,7 @@ describe('Admin WOD routes - protected access', () => {
   it('rejects POST /admin/wods with no Authorization header', async () => {
     const res = await request(app)
       .post('/api/admin/wods')
-      .send({ session_date: '2026-11-01', time_slot: '18:00' });
+      .send({ session_date: '2026-11-01', start_time: '18:00', end_time: '19:00' });
     expect(res.status).toBe(401);
     expect(res.body.error.code).toBe('UNAUTHENTICATED');
   });
@@ -25,7 +25,7 @@ describe('Admin WOD routes - protected access', () => {
     const res = await request(app)
       .post('/api/admin/wods')
       .set('Authorization', 'NotBearer something')
-      .send({ session_date: '2026-11-01', time_slot: '18:00' });
+      .send({ session_date: '2026-11-01', start_time: '18:00', end_time: '19:00' });
     expect(res.status).toBe(401);
   });
 
@@ -33,16 +33,21 @@ describe('Admin WOD routes - protected access', () => {
     const res = await request(app)
       .post('/api/admin/wods')
       .set('Authorization', 'Bearer not-a-real-token')
-      .send({ session_date: '2026-11-01', time_slot: '18:00' });
+      .send({ session_date: '2026-11-01', start_time: '18:00', end_time: '19:00' });
     expect(res.status).toBe(401);
   });
 
   it('rejects PUT and DELETE on admin routes without a token', async () => {
-    const putRes = await request(app).put('/api/admin/wods/1').send({ time_slot: '19:00' });
+    const putRes = await request(app).put('/api/admin/wods/1').send({ start_time: '19:00' });
     expect(putRes.status).toBe(401);
 
     const deleteRes = await request(app).delete('/api/admin/wods/1');
     expect(deleteRes.status).toBe(401);
+  });
+
+  it('rejects POST /admin/wods/:id/duplicate without a token', async () => {
+    const res = await request(app).post('/api/admin/wods/1/duplicate').send({});
+    expect(res.status).toBe(401);
   });
 
   it('accepts POST /admin/wods with a valid token', async () => {
@@ -50,7 +55,7 @@ describe('Admin WOD routes - protected access', () => {
     const res = await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: '2026-11-01', time_slot: '18:00' });
+      .send({ session_date: '2026-11-01', start_time: '18:00', end_time: '19:00' });
     expect(res.status).toBe(201);
   });
 
@@ -60,5 +65,8 @@ describe('Admin WOD routes - protected access', () => {
 
     const history = await request(app).get('/api/wods');
     expect(history.status).toBe(200);
+
+    const tvNow = await request(app).get('/api/wods/tv-now');
+    expect(tvNow.status).toBe(200);
   });
 });

@@ -32,7 +32,7 @@ async function login(email, password) {
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
   await sessionModel.create({ userId: user.id, tokenHash: hashToken(token), expiresAt });
 
-  return { token, user: { id: user.id, email: user.email } };
+  return { token, user: { id: user.id, email: user.email, role: user.role } };
 }
 
 async function logout(token) {

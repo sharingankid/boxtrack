@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "BoxTrack API",
-    "description": "Core V1 (auth + WOD sessions) + Recipes (sponsor-approved addition). See backend/API_CONTRACT.md for the full field-by-field contract. Run 'Login' first - it saves the token into {{token}} automatically for every other request.",
+    "description": "Core V1 (auth + WOD sessions, real schedules). See backend/API_CONTRACT.md for the full field-by-field contract. Run 'Login' first - it saves the token into {{token}} automatically for every other request. Recipes/Spoonacular has been removed from the product entirely (see API_CONTRACT.md changelog).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -55,6 +55,10 @@
           "request": { "method": "GET", "url": "{{base_url}}/wods/today" }
         },
         {
+          "name": "TV view state (current / next / remaining)",
+          "request": { "method": "GET", "url": "{{base_url}}/wods/tv-now" }
+        },
+        {
           "name": "History (date range)",
           "request": {
             "method": "GET",
@@ -88,7 +92,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"session_date\": \"2026-12-01\",\n  \"time_slot\": \"18:00\",\n  \"warmup\": { \"general\": \"3 min row easy\", \"specific\": \"empty bar squats x10\" },\n  \"skill_strength\": { \"kind\": \"skill\", \"instructions\": \"Kipping pull-up drills\", \"movements\": [{ \"movement_name\": \"Kipping Pull-Up\", \"detail\": \"3x5\" }] },\n  \"wod\": { \"format\": \"AMRAP\", \"duration_or_target\": \"20 min\", \"notes\": \"pace yourself\", \"movements\": [{ \"movement_name\": \"Pull-Up\", \"detail\": \"5 reps\" }, { \"movement_name\": \"Push-Up\", \"detail\": \"10 reps\" }, { \"movement_name\": \"Air Squat\", \"detail\": \"15 reps\" }] }\n}"
+              "raw": "{\n  \"session_date\": \"2026-12-01\",\n  \"start_time\": \"18:00\",\n  \"end_time\": \"19:00\",\n  \"title\": \"Evening class\",\n  \"warmup\": { \"general\": \"3 min row easy\", \"specific\": \"empty bar squats x10\" },\n  \"skill_strength\": { \"kind\": \"skill\", \"instructions\": \"Kipping pull-up drills\", \"movements\": [{ \"movement_name\": \"Kipping Pull-Up\", \"detail\": \"3x5\" }] },\n  \"wod\": { \"format\": \"AMRAP\", \"duration_or_target\": \"20 min\", \"notes\": \"pace yourself\", \"movements\": [{ \"movement_name\": \"Pull-Up\", \"detail\": \"5 reps\" }, { \"movement_name\": \"Push-Up\", \"detail\": \"10 reps\" }, { \"movement_name\": \"Air Squat\", \"detail\": \"15 reps\" }] }\n}"
             },
             "url": "{{base_url}}/admin/wods"
           }
@@ -109,46 +113,7 @@
           }
         },
         {
-          "name": "Delete session",
-          "request": {
-            "method": "DELETE",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": "{{base_url}}/admin/wods/1"
-          }
-        }
-      ]
-    },
-    {
-      "name": "Recipes - public",
-      "item": [
-        {
-          "name": "List recipes",
-          "request": { "method": "GET", "url": "{{base_url}}/recipes" }
-        },
-        {
-          "name": "Recipe detail",
-          "request": { "method": "GET", "url": "{{base_url}}/recipes/1" }
-        }
-      ]
-    },
-    {
-      "name": "Recipes - admin (coach)",
-      "item": [
-        {
-          "name": "Search Spoonacular",
-          "request": {
-            "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": {
-              "raw": "{{base_url}}/admin/recipes/search?query=chicken",
-              "host": ["{{base_url}}"],
-              "path": ["admin", "recipes", "search"],
-              "query": [{ "key": "query", "value": "chicken" }]
-            }
-          }
-        },
-        {
-          "name": "Save a recipe",
+          "name": "Duplicate session (onto a new date)",
           "request": {
             "method": "POST",
             "header": [
@@ -157,29 +122,17 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"spoonacular_id\": 634476,\n  \"name\": \"Bbq Chicken\",\n  \"calorie\": 478,\n  \"image_url\": \"https://img.spoonacular.com/recipes/634476-312x231.jpg\",\n  \"categories\": [\"lunch\", \"main course\"]\n}"
+              "raw": "{\n  \"session_date\": \"2026-12-08\"\n}"
             },
-            "url": "{{base_url}}/admin/recipes"
+            "url": "{{base_url}}/admin/wods/1/duplicate"
           }
         },
         {
-          "name": "Update a recipe",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{token}}" }
-            ],
-            "body": { "mode": "raw", "raw": "{\n  \"calorie\": 500,\n  \"categories\": [\"dinner\"]\n}" },
-            "url": "{{base_url}}/admin/recipes/1"
-          }
-        },
-        {
-          "name": "Delete a recipe",
+          "name": "Delete session",
           "request": {
             "method": "DELETE",
             "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
-            "url": "{{base_url}}/admin/recipes/1"
+            "url": "{{base_url}}/admin/wods/1"
           }
         }
       ]

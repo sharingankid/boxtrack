@@ -5,6 +5,7 @@ const scoreController = require('../controllers/scoreController');
 const router = express.Router();
 
 router.get('/today', wodController.getToday);
+router.get('/tv-now', wodController.getTvState);
 router.get('/', wodController.list);
 router.get('/:id', wodController.getById);
 router.get('/:id/leaderboard', scoreController.getLeaderboard);
