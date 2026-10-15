@@ -31,10 +31,7 @@ describe('scoreService.getLeaderboard', () => {
 
   it('ranks an AMRAP WOD descending - more reps wins', async () => {
     wodModel.findById.mockResolvedValue({ wod: { format: 'AMRAP' } });
-    scoreModel.listByWod.mockResolvedValue([
-      athleteScore(1, 'RX', 120),
-      athleteScore(2, 'RX', 180),
-    ]);
+    scoreModel.listByWod.mockResolvedValue([athleteScore(1, 'RX', 120), athleteScore(2, 'RX', 180)]);
 
     const { rankings, sort } = await scoreService.getLeaderboard(1);
 
@@ -44,10 +41,7 @@ describe('scoreService.getLeaderboard', () => {
 
   it('keeps RX/Scaled/Modified ranked separately from each other', async () => {
     wodModel.findById.mockResolvedValue({ wod: { format: 'AMRAP' } });
-    scoreModel.listByWod.mockResolvedValue([
-      athleteScore(1, 'RX', 100),
-      athleteScore(2, 'Scaled', 999),
-    ]);
+    scoreModel.listByWod.mockResolvedValue([athleteScore(1, 'RX', 100), athleteScore(2, 'Scaled', 999)]);
 
     const { rankings } = await scoreService.getLeaderboard(1);
 

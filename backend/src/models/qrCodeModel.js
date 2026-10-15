@@ -1,7 +1,13 @@
 const pool = require('../config/db');
 
 function assemble(row) {
-  return { id: row.id, label: row.label, url: row.url, order_index: row.order_index, created_at: row.created_at };
+  return {
+    id: row.id,
+    label: row.label,
+    url: row.url,
+    order_index: row.order_index,
+    created_at: row.created_at,
+  };
 }
 
 async function list() {

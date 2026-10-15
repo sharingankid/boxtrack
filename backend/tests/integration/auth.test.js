@@ -51,7 +51,9 @@ describe('Auth', () => {
   });
 
   it('rejects a non-string email with 400 instead of crashing', async () => {
-    const res = await request(app).post('/api/auth/login').send({ email: { $ne: '' }, password: 'x' });
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: { $ne: '' }, password: 'x' });
     expect(res.status).toBe(400);
   });
 

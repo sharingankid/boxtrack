@@ -20,10 +20,7 @@ async function list({ active } = {}) {
     conditions.push(`active = $${values.length}`);
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-  const { rows } = await pool.query(
-    `SELECT * FROM athletes ${where} ORDER BY last_name, first_name`,
-    values
-  );
+  const { rows } = await pool.query(`SELECT * FROM athletes ${where} ORDER BY last_name, first_name`, values);
   return rows.map(assemble);
 }
 

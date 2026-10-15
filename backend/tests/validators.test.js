@@ -1,4 +1,9 @@
-const { assertValidId, isValidIsoDate, isHttpUrl, assertOptionalBoolean } = require('../src/utils/validators');
+const {
+  assertValidId,
+  isValidIsoDate,
+  isHttpUrl,
+  assertOptionalBoolean,
+} = require('../src/utils/validators');
 
 describe('isValidIsoDate', () => {
   it('accepts a real calendar date', () => {

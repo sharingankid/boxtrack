@@ -29,7 +29,9 @@ async function getWodOrThrow(wodId) {
 // result share a rank, and the next one skips accordingly - two people
 // finishing in 12:34 are both 1st, not 1st and 2nd by insertion order.
 function rankCategory(scores, ascending) {
-  const sorted = [...scores].sort((a, b) => (ascending ? a.result_value - b.result_value : b.result_value - a.result_value));
+  const sorted = [...scores].sort((a, b) =>
+    ascending ? a.result_value - b.result_value : b.result_value - a.result_value
+  );
   let rank = 0;
   return sorted.map((score, index) => {
     if (index === 0 || score.result_value !== sorted[index - 1].result_value) rank = index + 1;
@@ -45,7 +47,10 @@ async function getLeaderboard(wodId) {
 
   const rankings = {};
   for (const category of CATEGORIES) {
-    rankings[category] = rankCategory(scores.filter((s) => s.category === category), ascending);
+    rankings[category] = rankCategory(
+      scores.filter((s) => s.category === category),
+      ascending
+    );
   }
 
   return { wod_id: Number(wodId), format: wod.wod.format, sort: ascending ? 'asc' : 'desc', rankings };
@@ -59,7 +64,11 @@ function assertValid(data) {
   if (!CATEGORIES.includes(data.category)) {
     throw new ApiError(400, 'VALIDATION_ERROR', `category must be one of ${CATEGORIES.join(', ')}`);
   }
-  if (data.result_value === undefined || data.result_value === null || Number.isNaN(Number(data.result_value))) {
+  if (
+    data.result_value === undefined ||
+    data.result_value === null ||
+    Number.isNaN(Number(data.result_value))
+  ) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'result_value is required and must be a number');
   }
   if (Number(data.result_value) < 0) {
