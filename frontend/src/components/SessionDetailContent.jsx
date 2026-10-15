@@ -1,9 +1,11 @@
+import { movementDetail } from '../services/sessionAdapter.js'
 import { FORMAT_LABELS } from '../lib/format.js'
+import LoadHelper from './LoadHelper.jsx'
 
 function MovementList({ movements = [] }) {
   if (!movements.length) return <p className="muted">Aucun mouvement renseigné.</p>
   return <ol className="movement-list">{movements.map((item, index) => (
-    <li key={`${item.movement_name}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span><strong>{item.movement_name}</strong><small>{item.detail}</small></li>
+    <li key={`${item.movement_name}-${index}`}><span>{String(index + 1).padStart(2, '0')}</span><strong>{item.movement_name}</strong><small>{movementDetail(item)}</small><LoadHelper name={item.movement_name} detail={movementDetail(item)} /></li>
   ))}</ol>
 }
 

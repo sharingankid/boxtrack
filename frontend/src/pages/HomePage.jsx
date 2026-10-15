@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom'
 import SessionCard from '../components/SessionCard.jsx'
 import StatePanel from '../components/StatePanel.jsx'
-import { formatDate, toLocalISODate } from '../lib/format.js'
+import { formatDate } from '../lib/format.js'
+import { parisNow } from '../lib/schedule.js'
 import { useSessions } from '../state/SessionsContext.jsx'
 
 export default function HomePage() {
   const { sessions, status, error, refresh } = useSessions()
-  const today = toLocalISODate()
+  const today = parisNow().date
   const todaysSessions = sessions.filter((item) => item.session_date === today)
     .sort((a, b) => a.time_slot.localeCompare(b.time_slot))
 

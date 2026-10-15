@@ -18,7 +18,7 @@ export const demoSessions = [
     skill_strength: {
       kind: 'strength',
       instructions: 'Monter en charge avec une exécution propre. Repos 2 min entre les séries.',
-      movements: [{ movement_name: 'Front Squat', detail: '5 × 3 @ 80 %' }],
+      movements: [{ movement_name: 'Front Squat', detail: '5 × 3 à 80 % du 1RM' }],
     },
     wod: {
       format: 'AMRAP',

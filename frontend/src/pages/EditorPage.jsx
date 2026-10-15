@@ -1,410 +1,124 @@
-import { useEffect, useState } from 'react'
-import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
-import DemoBanner from '../components/DemoBanner.jsx'
-import {
-  SESSION_FORMATS,
-  FORMAT_LABELS,
-  toLocalISODate,
-} from '../lib/format.js'
+import { useEffect, useRef, useState } from 'react'
+import { Link, useBlocker, useLocation, useNavigate, useParams } from 'react-router-dom'
+import { FORMAT_LABELS, SESSION_FORMATS } from '../lib/format.js'
+import { addDays, minutes, parisNow } from '../lib/schedule.js'
 import { useAuth } from '../state/AuthContext.jsx'
 import { useSessions } from '../state/SessionsContext.jsx'
+import ConfirmDialog from '../components/ConfirmDialog.jsx'
+import StatePanel from '../components/StatePanel.jsx'
 
-const blankMovement = () => ({ movement_name: '', detail: '' })
+const blankMovement = () => ({ movement_name: '', sets_reps: '', load: '', instructions: '', detail: '' })
+const isBlank = movement => !['movement_name', 'sets_reps', 'load', 'instructions', 'detail'].some(field => movement[field]?.trim())
+// Rows left completely empty are an editing convenience, never published.
+const withoutBlankMovements = form => ({ ...form, skill_strength: { ...form.skill_strength, movements: form.skill_strength.movements.filter(m => !isBlank(m)) }, wod: { ...form.wod, movements: form.wod.movements.filter(m => !isBlank(m)) } })
 const emptyForm = () => ({
-  session_date: toLocalISODate(),
-  time_slot: '',
+  session_date: parisNow().date, start_time: '', end_time: '', time_slot: '', title: '',
   warmup: { general: '', specific: '' },
-  skill_strength: {
-    kind: 'skill',
-    instructions: '',
-    movements: [blankMovement()],
-  },
-  wod: {
-    format: 'AMRAP',
-    duration_or_target: '',
-    notes: '',
-    movements: [blankMovement()],
-  },
+  skill_strength: { kind: 'skill', instructions: '', movements: [blankMovement()] },
+  wod: { format: 'AMRAP', duration_or_target: '', notes: '', movements: [blankMovement()] },
 })
-
-const formFromSession = (session) => {
-  const fallback = emptyForm()
-  return {
-    ...fallback,
-    ...session,
-    warmup: {
-      general: session.warmup?.general ?? '',
-      specific: session.warmup?.specific ?? '',
-    },
-    skill_strength: {
-      ...fallback.skill_strength,
-      ...session.skill_strength,
-      instructions: session.skill_strength?.instructions ?? '',
-      movements: session.skill_strength?.movements?.length
-        ? session.skill_strength.movements.map((item) => ({
-            ...item,
-            detail: item.detail ?? '',
-          }))
-        : [blankMovement()],
-    },
-    wod: {
-      ...fallback.wod,
-      ...session.wod,
-      duration_or_target: session.wod?.duration_or_target ?? '',
-      notes: session.wod?.notes ?? '',
-      movements: session.wod?.movements?.length
-        ? session.wod.movements.map((item) => ({
-            ...item,
-            detail: item.detail ?? '',
-          }))
-        : [blankMovement()],
-    },
+function fromSession(session) {
+  const base = emptyForm()
+  const movements = items => items?.length ? items.map(m => ({ ...blankMovement(), ...m, detail: m.detail ?? '' })) : [blankMovement()]
+  return { ...base, session_date: session.session_date, start_time: session.start_time || '', end_time: session.end_time || '', time_slot: session.time_slot || '', title: session.title || '',
+    warmup: { general: session.warmup?.general ?? '', specific: session.warmup?.specific ?? '' },
+    skill_strength: { kind: session.skill_strength?.kind || 'skill', instructions: session.skill_strength?.instructions ?? '', movements: movements(session.skill_strength?.movements) },
+    wod: { format: session.wod?.format || 'AMRAP', duration_or_target: session.wod?.duration_or_target ?? '', notes: session.wod?.notes ?? '', movements: movements(session.wod?.movements) },
   }
 }
-
-function MovementEditor({ title, items, onChange }) {
-  const update = (index, field, value) =>
-    onChange(
-      items.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item,
-      ),
-    )
-  return (
-    <fieldset className="movement-editor">
-      <legend>{title}</legend>
-      {items.map((item, index) => (
-        <div className="movement-row" key={index}>
-          <span>{String(index + 1).padStart(2, '0')}</span>
-          <input
-            aria-label={`Mouvement ${index + 1}`}
-            value={item.movement_name}
-            onChange={(e) => update(index, 'movement_name', e.target.value)}
-            placeholder="Mouvement"
-          />
-          <input
-            aria-label={`Détail ${index + 1}`}
-            value={item.detail}
-            onChange={(e) => update(index, 'detail', e.target.value)}
-            placeholder="Répétitions, charge, distance…"
-          />
-          {items.length > 1 && (
-            <button
-              type="button"
-              className="icon-button"
-              onClick={() => onChange(items.filter((_, i) => i !== index))}
-              aria-label={`Supprimer le mouvement ${index + 1}`}
-            >
-              ×
-            </button>
-          )}
-        </div>
-      ))}
-      <button
-        type="button"
-        className="add-button"
-        onClick={() => onChange([...items, blankMovement()])}
-      >
-        + Ajouter un mouvement
-      </button>
-    </fieldset>
-  )
+function TextField({ label, value, onChange, multiline = false, ...props }) {
+  return <label>{label}{multiline ? <textarea aria-label={label} rows="3" value={value} onChange={e => onChange(e.target.value)} {...props} /> : <input aria-label={label} value={value} onChange={e => onChange(e.target.value)} {...props} />}</label>
 }
-
+function MovementEditor({ items, onChange, phase }) {
+  const update = (index, field, value) => onChange(items.map((item, i) => i === index ? { ...item, [field]: value } : item))
+  return <fieldset className="movement-builder"><legend>Mouvements</legend>{items.map((item, index) => <div className="movement-fields" key={index}>
+    <div className="movement-heading"><strong>Mouvement {index + 1}</strong><button type="button" className="text-button" aria-label={`Supprimer ${phase} mouvement ${index + 1}`} onClick={() => onChange(items.filter((_, i) => i !== index))}>Supprimer</button></div>
+    <TextField label={`Nom · ${phase} ${index + 1}`} value={item.movement_name} onChange={value => update(index, 'movement_name', value)} placeholder="Front squat" required={!isBlank(item)} />
+    <div className="two-cols"><TextField label={`Séries / répétitions · ${phase} ${index + 1}`} value={item.sets_reps} onChange={value => update(index, 'sets_reps', value)} placeholder="5 × 3 ou 12 reps" /><TextField label={`Charge · ${phase} ${index + 1}`} value={item.load} onChange={value => update(index, 'load', value)} placeholder="40 kg ou 80 %" /></div>
+    <TextField label={`Instructions · ${phase} ${index + 1}`} value={item.instructions} onChange={value => update(index, 'instructions', value)} placeholder="Tempo, amplitude, adaptation…" />
+    {item.detail !== '' && <TextField label={`Détail existant · ${phase} ${index + 1}`} value={item.detail} onChange={value => update(index, 'detail', value)} />}
+  </div>)}<button type="button" className="button ghost" onClick={() => onChange([...items, blankMovement()])}>Ajouter un mouvement {phase}</button></fieldset>
+}
 export default function EditorPage() {
   const { id } = useParams()
+  const location = useLocation()
+  const duplicate = location.pathname.endsWith('/duplicate')
   const navigate = useNavigate()
-  const { session: auth, logout } = useAuth()
-  const { getSession, saveSession, mode } = useSessions()
+  const { session: auth, mode } = useAuth()
+  const { getSession, saveSession, deleteSession, capabilities } = useSessions()
   const [form, setForm] = useState(emptyForm)
+  const [baseline, setBaseline] = useState('')
+  const [ready, setReady] = useState(false)
+  const [loadError, setLoadError] = useState('')
   const [message, setMessage] = useState('')
   const [saving, setSaving] = useState(false)
-  const [loadedId, setLoadedId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
+  const bypass = useRef(false)
+  const key = `boxtrack.draft.${mode}.${auth?.user?.email}.${duplicate ? 'duplicate-' : ''}${id || 'new'}`
+  const dirty = ready && JSON.stringify(form) !== baseline
+  const blocker = useBlocker(({ currentLocation, nextLocation }) => Boolean(auth && dirty && !bypass.current && currentLocation.pathname !== nextLocation.pathname))
   useEffect(() => {
     let active = true
-    if (!id) {
-      setForm(emptyForm())
-      setLoadedId(null)
-    }
-    if (id)
-      getSession(id)
-        .then((item) => {
-          if (active && item) {
-            setForm(formFromSession(item))
-            setLoadedId(id)
-          }
-          if (active && !item)
-            setMessage('Erreur : cette séance est introuvable.')
-        })
-        .catch((err) => {
-          if (active) setMessage(`Erreur : ${err.message}`)
-        })
-    return () => {
-      active = false
-    }
-  }, [id, getSession])
-  if (!auth) return <Navigate to="/login" replace />
-  const pending = Boolean(id && loadedId !== id)
-  const setBlock = (block, field, value) =>
-    setForm((current) => ({
-      ...current,
-      [block]: { ...current[block], [field]: value },
-    }))
-  const submit = async (event) => {
-    event.preventDefault()
-    if (pending) return
+    setReady(false); setLoadError(''); setMessage(''); bypass.current = false
+    Promise.resolve(id ? getSession(id) : null).then(item => {
+      if (!active) return
+      if (id && !item) throw new Error('Cette séance est introuvable.')
+      const original = item ? fromSession(item) : emptyForm()
+      if (duplicate) original.session_date = addDays(original.session_date < parisNow().date ? parisNow().date : original.session_date, 1)
+      let draft
+      try { draft = JSON.parse(sessionStorage.getItem(key)) } catch { /* Ignore damaged drafts. */ }
+      setForm(draft?.form?.warmup && draft.form.wod && draft.form.skill_strength ? draft.form : original)
+      setBaseline(JSON.stringify(original)); setReady(true)
+      if (draft) setMessage('Votre brouillon a été restauré. Il n’est pas encore publié.')
+    }).catch(err => { if (active) setLoadError(err.message) })
+    return () => { active = false }
+  }, [id, duplicate, getSession, key])
+  useEffect(() => {
+    if (dirty) sessionStorage.setItem(key, JSON.stringify({ form }))
+    else if (ready) sessionStorage.removeItem(key)
+    const beforeUnload = event => { if (dirty && !bypass.current) { event.preventDefault(); event.returnValue = '' } }
+    window.addEventListener('beforeunload', beforeUnload)
+    return () => window.removeEventListener('beforeunload', beforeUnload)
+  }, [dirty, form, key, ready])
+  const setBlock = (block, field, value) => setForm(current => ({ ...current, [block]: { ...current[block], [field]: value } }))
+  const submit = async event => {
+    event.preventDefault(); setMessage('')
+    if (!ready || saving) return
+    if (capabilities.scheduling && (minutes(form.end_time) === null || minutes(form.start_time) === null || minutes(form.end_time) <= minutes(form.start_time))) { setMessage('L’heure de fin doit être après l’heure de début, le même jour.'); return }
     setSaving(true)
-    setMessage('')
-    const clean = {
-      ...form,
-      skill_strength: {
-        ...form.skill_strength,
-        movements: form.skill_strength.movements.filter((m) => m.movement_name),
-      },
-      wod: {
-        ...form.wod,
-        movements: form.wod.movements.filter((m) => m.movement_name),
-      },
-    }
     try {
-      const saved = await saveSession(clean, id)
-      setMessage(
-        mode === 'demo'
-          ? 'Séance enregistrée pour cet aperçu uniquement.'
-          : 'Séance enregistrée.',
-      )
-      if (!id) navigate(`/admin/sessions/${saved.id}/edit`, { replace: true })
-    } catch (err) {
-      setMessage(`Erreur : ${err.message}`)
-    } finally {
-      setSaving(false)
-    }
+      const payload = withoutBlankMovements({ ...form, time_slot: form.start_time || form.time_slot })
+      await saveSession(payload, duplicate ? undefined : id)
+      bypass.current = true; sessionStorage.removeItem(key)
+      setBaseline(JSON.stringify(form))
+      navigate('/admin', { replace: true, state: { notice: duplicate ? 'Séance dupliquée.' : id ? 'Séance modifiée.' : 'Séance créée.' } })
+    } catch (err) { setMessage(err.status === 409 ? 'Ce créneau est déjà occupé. Choisissez une autre heure.' : err.status === 401 || err.status === 403 ? 'Reconnectez-vous. Votre brouillon est conservé.' : err.message === 'Failed to fetch' ? 'Enregistrement impossible. Vérifiez le réseau ; votre saisie est conservée.' : err.message) }
+    finally { setSaving(false) }
   }
-  return (
-    <div className="admin-shell">
-      <DemoBanner />
-      <header className="admin-header">
-        <Link className="brand" to="/">
-          <span className="brand-mark">BT</span>
-          <span>
-            <strong>BOXTRACK</strong>
-            <small>COACH</small>
-          </span>
-        </Link>
-        <div>
-          <Link className="text-link" to="/">
-            Voir le site
-          </Link>
-          <button
-            className="button ghost small"
-            onClick={async () => {
-              await logout()
-              navigate('/')
-            }}
-          >
-            Déconnexion
-          </button>
-        </div>
-      </header>
-      <main className="admin-main">
-        <div className="admin-title">
-          <div>
-            <p className="eyebrow">Espace coach</p>
-            <h1>{id ? 'Modifier la séance' : 'Créer une séance'}</h1>
-            <p>
-              {mode === 'demo'
-                ? 'Aperçu local non sécurisé — rien n’est envoyé au backend.'
-                : 'Les changements sont visibles dès l’enregistrement.'}
-            </p>
-          </div>
-          <button
-            form="session-form"
-            className="button primary"
-            disabled={saving || pending}
-          >
-            {saving ? 'Enregistrement…' : 'Enregistrer'}
-          </button>
-        </div>
-        {pending && !message && <p role="status">Chargement de la séance…</p>}
-        {message && (
-          <p className="save-message" role="status">
-            {message}
-          </p>
-        )}
-        <form id="session-form" className="editor-form" onSubmit={submit}>
-          <fieldset disabled={pending || saving} className="editor-fields">
-            <section className="form-section">
-              <div className="form-section-title">
-                <span>01</span>
-                <div>
-                  <p className="eyebrow">Planification</p>
-                  <h2>Date & créneau</h2>
-                </div>
-              </div>
-              <div className="two-cols">
-                <label>
-                  Date
-                  <input
-                    type="date"
-                    required
-                    value={form.session_date}
-                    onChange={(e) =>
-                      setForm({ ...form, session_date: e.target.value })
-                    }
-                  />
-                </label>
-                <label>
-                  Créneau
-                  <input
-                    required
-                    value={form.time_slot}
-                    onChange={(e) =>
-                      setForm({ ...form, time_slot: e.target.value })
-                    }
-                    placeholder="18:00"
-                  />
-                </label>
-              </div>
-            </section>
-            <section className="form-section">
-              <div className="form-section-title">
-                <span>02</span>
-                <div>
-                  <p className="eyebrow">Mise en route</p>
-                  <h2>Warm-Up</h2>
-                </div>
-              </div>
-              <label>
-                Warm-Up général
-                <textarea
-                  rows="3"
-                  aria-label="Warm-Up général"
-                  value={form.warmup.general}
-                  onChange={(e) =>
-                    setBlock('warmup', 'general', e.target.value)
-                  }
-                  placeholder="Cardio, mobilité générale…"
-                />
-              </label>
-              <label>
-                Warm-Up spécifique
-                <textarea
-                  rows="3"
-                  aria-label="Warm-Up spécifique"
-                  value={form.warmup.specific}
-                  onChange={(e) =>
-                    setBlock('warmup', 'specific', e.target.value)
-                  }
-                  placeholder="Préparation des mouvements du jour…"
-                />
-              </label>
-            </section>
-            <section className="form-section">
-              <div className="form-section-title">
-                <span>03</span>
-                <div>
-                  <p className="eyebrow">Technique & force</p>
-                  <h2>Skill / Strength</h2>
-                </div>
-              </div>
-              <div className="segmented">
-                <button
-                  type="button"
-                  className={
-                    form.skill_strength.kind === 'skill' ? 'active' : ''
-                  }
-                  onClick={() => setBlock('skill_strength', 'kind', 'skill')}
-                >
-                  Skill
-                </button>
-                <button
-                  type="button"
-                  className={
-                    form.skill_strength.kind === 'strength' ? 'active' : ''
-                  }
-                  onClick={() => setBlock('skill_strength', 'kind', 'strength')}
-                >
-                  Strength
-                </button>
-              </div>
-              <label>
-                Consignes
-                <textarea
-                  rows="3"
-                  aria-label="Consignes"
-                  value={form.skill_strength.instructions}
-                  onChange={(e) =>
-                    setBlock('skill_strength', 'instructions', e.target.value)
-                  }
-                />
-              </label>
-              <MovementEditor
-                title="Mouvements"
-                items={form.skill_strength.movements}
-                onChange={(value) =>
-                  setBlock('skill_strength', 'movements', value)
-                }
-              />
-            </section>
-            <section className="form-section accent-section">
-              <div className="form-section-title">
-                <span>04</span>
-                <div>
-                  <p className="eyebrow">Workout of the day</p>
-                  <h2>WOD</h2>
-                </div>
-              </div>
-              <fieldset>
-                <legend>Format</legend>
-                <div className="format-picker">
-                  {SESSION_FORMATS.map((format) => (
-                    <button
-                      type="button"
-                      key={format}
-                      className={form.wod.format === format ? 'active' : ''}
-                      onClick={() => setBlock('wod', 'format', format)}
-                    >
-                      {FORMAT_LABELS[format]}
-                    </button>
-                  ))}
-                </div>
-              </fieldset>
-              <label>
-                Durée ou objectif
-                <input
-                  value={form.wod.duration_or_target}
-                  onChange={(e) =>
-                    setBlock('wod', 'duration_or_target', e.target.value)
-                  }
-                  placeholder="20 min, 21-15-9, cap 15 min…"
-                />
-              </label>
-              <MovementEditor
-                title="Mouvements"
-                items={form.wod.movements}
-                onChange={(value) => setBlock('wod', 'movements', value)}
-              />
-              <label>
-                Notes du coach
-                <textarea
-                  rows="3"
-                  aria-label="Notes du coach"
-                  value={form.wod.notes}
-                  onChange={(e) => setBlock('wod', 'notes', e.target.value)}
-                  placeholder="Intention, pacing, adaptations…"
-                />
-              </label>
-            </section>
-            <div className="form-actions">
-              <button className="button primary" disabled={saving || pending}>
-                {saving ? 'Enregistrement…' : 'Enregistrer la séance'}
-              </button>
-              <Link className="button ghost" to="/">
-                Annuler
-              </Link>
-            </div>
-          </fieldset>
-        </form>
-      </main>
-    </div>
-  )
+  const remove = async () => {
+    setSaving(true); setMessage('')
+    try { await deleteSession(id); bypass.current = true; sessionStorage.removeItem(key); navigate('/admin', { replace: true, state: { notice: 'Séance supprimée.' } }) }
+    catch (err) { setMessage(err.message) } finally { setSaving(false) }
+  }
+  if (loadError) return <StatePanel type="error" title="Séance indisponible" message={loadError} action={<Link className="button ghost" to="/admin">Retour au planning</Link>} />
+  if (!ready) return <StatePanel title="Chargement de la séance" message="Un instant…" />
+  return <>
+    <Link className="back-link" to="/admin">← Retour au planning</Link>
+    <div className="coach-title"><div><p className="eyebrow">{duplicate ? 'Copie de séance' : 'Programmation'}</p><h1>{duplicate ? 'Dupliquer la séance' : id ? 'Modifier la séance' : 'Créer une séance'}</h1></div></div>
+    {message && <p className="notice" role="alert">{message}</p>}
+    <form id="session-form" className="editor-form mobile-editor" onSubmit={submit}>
+      <fieldset disabled={saving} className="editor-fields"><section className="form-section"><h2>Informations générales</h2>
+        <TextField label="Date" type="date" required value={form.session_date} onChange={value => setForm({ ...form, session_date: value })} />
+        <div className="two-cols"><TextField label="Heure de début" type="time" required={capabilities.scheduling || !form.time_slot} value={form.start_time} onChange={value => setForm({ ...form, start_time: value, time_slot: value })} /><TextField label="Heure de fin" type="time" required={capabilities.scheduling} disabled={!capabilities.scheduling} value={form.end_time} onChange={value => setForm({ ...form, end_time: value })} /></div>
+        {!capabilities.scheduling && <p className="field-help">L’heure de fin et le titre sont disponibles en démonstration seulement. {form.time_slot && !form.start_time ? `Créneau existant conservé : ${form.time_slot}.` : ''}</p>}
+        <TextField label="Titre (facultatif)" disabled={!capabilities.title} value={form.title} onChange={value => setForm({ ...form, title: value })} placeholder="Force & conditionnement" />
+      </section><section className="form-section"><h2>Warm-Up</h2><TextField label="Warm-Up général" multiline value={form.warmup.general} onChange={value => setBlock('warmup', 'general', value)} /><TextField label="Warm-Up spécifique" multiline value={form.warmup.specific} onChange={value => setBlock('warmup', 'specific', value)} /></section>
+      <section className="form-section"><h2>Skill / Strength</h2><div className="segmented" role="group" aria-label="Type de préparation">{['skill', 'strength'].map(kind => <button type="button" key={kind} aria-pressed={form.skill_strength.kind === kind} className={form.skill_strength.kind === kind ? 'active' : ''} onClick={() => setBlock('skill_strength', 'kind', kind)}>{kind === 'skill' ? 'Skill' : 'Strength'}</button>)}</div><TextField label="Consignes Skill / Strength" multiline value={form.skill_strength.instructions} onChange={value => setBlock('skill_strength', 'instructions', value)} /><MovementEditor phase="Skill" items={form.skill_strength.movements} onChange={value => setBlock('skill_strength', 'movements', value)} /></section>
+      <section className="form-section"><h2>WOD</h2><fieldset><legend>Format</legend><div className="format-picker">{SESSION_FORMATS.map(format => <button type="button" key={format} aria-pressed={form.wod.format === format} className={form.wod.format === format ? 'active' : ''} onClick={() => setBlock('wod', 'format', format)}>{FORMAT_LABELS[format]}</button>)}</div></fieldset><TextField label="Durée ou objectif" value={form.wod.duration_or_target} onChange={value => setBlock('wod', 'duration_or_target', value)} placeholder="20 min, 21-15-9, cap 15 min…" /><MovementEditor phase="WOD" items={form.wod.movements} onChange={value => setBlock('wod', 'movements', value)} /><TextField label="Remarques du coach" multiline value={form.wod.notes} onChange={value => setBlock('wod', 'notes', value)} /></section>
+      {id && !duplicate && <div className="editor-secondary"><Link className="button ghost" to={`/admin/sessions/${id}/duplicate`}>Dupliquer pour un autre créneau</Link><button type="button" className="text-button danger" onClick={() => { setDeleting(true); setMessage('') }}>Supprimer la séance</button></div>}
+      <div className="editor-save-bar"><Link className="button ghost" to="/admin">Annuler</Link><button className="button primary" disabled={saving}>{saving ? 'Enregistrement…' : 'Enregistrer'}</button></div></fieldset>
+    </form>
+    {blocker.state === 'blocked' && <ConfirmDialog title="Quitter sans enregistrer ?" confirmLabel="Quitter la page" onCancel={() => blocker.reset()} onConfirm={() => { sessionStorage.removeItem(key); blocker.proceed() }}><p>Les changements non enregistrés seront abandonnés.</p></ConfirmDialog>}
+    {deleting && <ConfirmDialog title="Supprimer cette séance ?" confirmLabel="Supprimer définitivement" busy={saving} onCancel={() => setDeleting(false)} onConfirm={remove}><p>Cette action est définitive.</p>{message && <p className="form-error" role="alert">{message}</p>}</ConfirmDialog>}
+  </>
 }

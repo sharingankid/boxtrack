@@ -1,3 +1,4 @@
+import { movementDetail } from '../services/sessionAdapter.js'
 import { Link } from 'react-router-dom'
 import { FORMAT_LABELS, formatDate } from '../lib/format.js'
 
@@ -16,7 +17,7 @@ export default function SessionCard({ session, featured = false }) {
       {movements.length > 0 && (
         <ol className="movement-preview">
           {movements.slice(0, 3).map((movement, index) => (
-            <li key={`${movement.movement_name}-${index}`}><span><b>{String(index + 1).padStart(2, '0')}</b>{movement.movement_name}</span><small>{movement.detail}</small></li>
+            <li key={`${movement.movement_name}-${index}`}><span><b>{String(index + 1).padStart(2, '0')}</b>{movement.movement_name}</span><small>{movementDetail(movement)}</small></li>
           ))}
         </ol>
       )}
