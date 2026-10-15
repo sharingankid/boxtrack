@@ -7,8 +7,22 @@ const { Pool, types } = require('pg');
 // returns instead, since that's what session_date actually is.
 types.setTypeParser(1082, (value) => value);
 
+// Hosted Postgres (Render, Railway, Neon...) requires TLS; a local Docker
+// or Homebrew Postgres doesn't speak it. DATABASE_SSL=true turns it on.
+// rejectUnauthorized stays false because these providers use certificates
+// Node doesn't ship the CA for - the connection is still encrypted.
+const ssl = process.env.DATABASE_SSL === 'true' ? { rejectUnauthorized: false } : undefined;
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+  ssl,
+});
+
+// An idle client losing its connection (database restart, network blip)
+// emits 'error' on the pool - unhandled, that would crash the whole API
+// mid-class. The next query simply gets a fresh connection.
+pool.on('error', (err) => {
+  console.error('Idle database client error:', err.message);
 });
 
 module.exports = pool;
