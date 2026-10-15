@@ -58,11 +58,7 @@ function assertValidMovements(movements, label) {
   }
   movements.forEach((movement, index) => {
     if (!movement || typeof movement.movement_name !== 'string' || !movement.movement_name.trim()) {
-      throw new ApiError(
-        400,
-        'VALIDATION_ERROR',
-        `${label}.movements[${index}].movement_name is required`
-      );
+      throw new ApiError(400, 'VALIDATION_ERROR', `${label}.movements[${index}].movement_name is required`);
     }
   });
 }
@@ -169,7 +165,11 @@ function assertRestOfPayload(data) {
 // surface as clean business errors, never a 500.
 function mapScheduleConflict(err) {
   if (err.code === '23505') {
-    return new ApiError(409, 'DUPLICATE_SESSION', 'A session already exists for this exact date and start_time');
+    return new ApiError(
+      409,
+      'DUPLICATE_SESSION',
+      'A session already exists for this exact date and start_time'
+    );
   }
   if (err.code === '23514') {
     return new ApiError(400, 'VALIDATION_ERROR', 'end_time must be after start_time');

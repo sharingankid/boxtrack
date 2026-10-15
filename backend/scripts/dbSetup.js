@@ -20,7 +20,9 @@ async function main() {
 
   const { rows } = await pool.query("SELECT to_regclass('public.wods') AS existing");
   if (rows[0].existing) {
-    throw new Error('The schema already exists on this database - nothing done. Use db/migrations/ to upgrade it.');
+    throw new Error(
+      'The schema already exists on this database - nothing done. Use db/migrations/ to upgrade it.'
+    );
   }
 
   await pool.query(fs.readFileSync(path.join(DB_DIR, 'schema.sql'), 'utf8'));

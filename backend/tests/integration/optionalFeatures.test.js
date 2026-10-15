@@ -47,7 +47,10 @@ describe('Optional tier (cahier des charges §5-6)', () => {
       expect(created.status).toBe(201);
       const { id } = created.body.athlete;
 
-      const deactivated = await request(app).put(`/api/admin/athletes/${id}`).set(auth()).send({ active: false });
+      const deactivated = await request(app)
+        .put(`/api/admin/athletes/${id}`)
+        .set(auth())
+        .send({ active: false });
       expect(deactivated.status).toBe(200);
       expect(deactivated.body.athlete.active).toBe(false);
 
@@ -81,8 +84,14 @@ describe('Optional tier (cahier des charges §5-6)', () => {
     }
 
     it('ranks a For Time WOD fastest-first, per category, with shared ranks on ties', async () => {
-      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod.id;
-      const [a, b, c, d] = [await createAthlete('A'), await createAthlete('B'), await createAthlete('C'), await createAthlete('D')];
+      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod
+        .id;
+      const [a, b, c, d] = [
+        await createAthlete('A'),
+        await createAthlete('B'),
+        await createAthlete('C'),
+        await createAthlete('D'),
+      ];
 
       const post = (athleteId, category, value) =>
         request(app)
@@ -103,7 +112,8 @@ describe('Optional tier (cahier des charges §5-6)', () => {
     });
 
     it('updates the existing score instead of duplicating it (one score per athlete per WOD)', async () => {
-      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod.id;
+      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod
+        .id;
       const athleteId = await createAthlete('A');
       const send = (value) =>
         request(app)
@@ -120,7 +130,8 @@ describe('Optional tier (cahier des charges §5-6)', () => {
     });
 
     it('refuses a new score for a deactivated athlete', async () => {
-      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod.id;
+      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod
+        .id;
       const athleteId = await createAthlete('A');
       await request(app).put(`/api/admin/athletes/${athleteId}`).set(auth()).send({ active: false });
 
@@ -132,7 +143,8 @@ describe('Optional tier (cahier des charges §5-6)', () => {
     });
 
     it('deletes a score', async () => {
-      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod.id;
+      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod
+        .id;
       const athleteId = await createAthlete('A');
       const scoreId = (
         await request(app)
@@ -159,7 +171,9 @@ describe('Optional tier (cahier des charges §5-6)', () => {
         .send({ active: false });
 
       expect((await request(app).get('/api/announcements')).body.announcements).toHaveLength(0);
-      expect((await request(app).get('/api/admin/announcements').set(auth())).body.announcements).toHaveLength(1);
+      expect(
+        (await request(app).get('/api/admin/announcements').set(auth())).body.announcements
+      ).toHaveLength(1);
     });
 
     it('requires a title', async () => {

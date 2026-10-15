@@ -14,7 +14,8 @@
     "lint:fix": "cross-env ESLINT_USE_FLAT_CONFIG=false eslint . --ext .js --fix",
     "format": "prettier --write \"**/*.js\"",
     "db:setup": "node scripts/dbSetup.js",
-    "user:create": "node scripts/createUser.js"
+    "user:create": "node scripts/createUser.js",
+    "format:check": "prettier --check \"**/*.js\""
   },
   "dependencies": {
     "bcrypt": "^5.1.1",

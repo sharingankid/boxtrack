@@ -111,7 +111,12 @@ describe('Admin WOD routes - validation', () => {
   });
 
   it('accepts an optional title', async () => {
-    const res = await post({ session_date: '2026-11-01', start_time: '18:00', end_time: '19:00', title: 'Evening class' });
+    const res = await post({
+      session_date: '2026-11-01',
+      start_time: '18:00',
+      end_time: '19:00',
+      title: 'Evening class',
+    });
     expect(res.status).toBe(201);
     expect(res.body.wod.title).toBe('Evening class');
   });
@@ -132,7 +137,9 @@ describe('Admin WOD routes - validation', () => {
   });
 
   it('rejects an invalid id on DELETE', async () => {
-    const res = await request(app).delete('/api/admin/wods/not-an-id').set('Authorization', `Bearer ${token}`);
+    const res = await request(app)
+      .delete('/api/admin/wods/not-an-id')
+      .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
   });

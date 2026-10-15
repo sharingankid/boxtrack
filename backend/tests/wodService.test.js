@@ -61,9 +61,10 @@ describe('wodService.create - validation', () => {
   });
 
   it('rejects an empty wod block instead of a NOT NULL crash on wod_blocks.format', async () => {
-    await expect(
-      wodService.create({ ...VALID_SCHEDULE, wod: {} }, 1)
-    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+    await expect(wodService.create({ ...VALID_SCHEDULE, wod: {} }, 1)).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
     expect(wodModel.create).not.toHaveBeenCalled();
   });
 
@@ -100,9 +101,10 @@ describe('wodService.update - validation', () => {
   });
 
   it('rejects start_time/end_time sent together with end before start', async () => {
-    await expect(
-      wodService.update(1, { start_time: '10:00', end_time: '09:00' })
-    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+    await expect(wodService.update(1, { start_time: '10:00', end_time: '09:00' })).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
     expect(wodModel.update).not.toHaveBeenCalled();
   });
 
@@ -158,7 +160,10 @@ describe('wodService.duplicate', () => {
     pgError.code = '23505';
     wodModel.create.mockRejectedValueOnce(pgError);
 
-    await expect(wodService.duplicate(5, {}, 1)).rejects.toMatchObject({ status: 409, code: 'DUPLICATE_SESSION' });
+    await expect(wodService.duplicate(5, {}, 1)).rejects.toMatchObject({
+      status: 409,
+      code: 'DUPLICATE_SESSION',
+    });
   });
 
   it('404s when the source session does not exist', async () => {
