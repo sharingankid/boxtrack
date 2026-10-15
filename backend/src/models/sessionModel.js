@@ -23,4 +23,8 @@ async function deleteByTokenHash(tokenHash) {
   await pool.query('DELETE FROM sessions WHERE token_hash = $1', [tokenHash]);
 }
 
-module.exports = { create, findValidByTokenHash, deleteByTokenHash };
+async function deleteExpiredForUser(userId) {
+  await pool.query('DELETE FROM sessions WHERE user_id = $1 AND expires_at <= now()', [userId]);
+}
+
+module.exports = { create, findValidByTokenHash, deleteByTokenHash, deleteExpiredForUser };
