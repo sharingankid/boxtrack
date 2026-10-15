@@ -43,6 +43,18 @@ describe('Auth', () => {
     expect(res.body.user).toEqual({ id: expect.any(Number), email: TEST_COACH_EMAIL, role: 'coach' });
   });
 
+  it('matches the email case-insensitively and ignores surrounding spaces', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: `  ${TEST_COACH_EMAIL.toUpperCase()} `, password: TEST_PASSWORD });
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects a non-string email with 400 instead of crashing', async () => {
+    const res = await request(app).post('/api/auth/login').send({ email: { $ne: '' }, password: 'x' });
+    expect(res.status).toBe(400);
+  });
+
   it('revokes the token on logout - it stops working immediately', async () => {
     const loginRes = await request(app)
       .post('/api/auth/login')
