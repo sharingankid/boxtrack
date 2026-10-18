@@ -6,9 +6,9 @@ const VALID_FORMATS = ['AMRAP', 'FOR_TIME', 'EMOM', 'TABATA', 'CHIPPER', 'STRENG
 const VALID_KINDS = ['skill', 'strength'];
 const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 
-function assertValidSessionDate(sessionDate) {
+function assertValidSessionDate(sessionDate, label = 'session_date') {
   if (!isValidIsoDate(sessionDate)) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'session_date must be a valid YYYY-MM-DD date');
+    throw new ApiError(400, 'VALIDATION_ERROR', `${label} must be a valid YYYY-MM-DD date`);
   }
 }
 
@@ -127,8 +127,8 @@ async function getById(id) {
 }
 
 async function list({ from, to }) {
-  if (from !== undefined) assertValidSessionDate(from);
-  if (to !== undefined) assertValidSessionDate(to);
+  if (from !== undefined) assertValidSessionDate(from, 'from');
+  if (to !== undefined) assertValidSessionDate(to, 'to');
   if (from !== undefined && to !== undefined && from > to) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'from must be on or before to');
   }
