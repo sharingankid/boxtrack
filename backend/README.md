@@ -6,10 +6,10 @@ Scores, athletes, announcements, and QR codes are the CDC's own Optional-tier, b
 see `API_CONTRACT.md` for their endpoints. The Recipes/Spoonacular feature has been removed
 entirely (it was a sponsor-approved side track, since reverted).
 
-Architecture: [docs/03-technical-documentation.md](../docs/03-technical-documentation.md) (not yet
-updated for the schedule refactor or the Optional-tier endpoints - `API_CONTRACT.md` is the
-source of truth for the API shape). Precise, up-to-date request/response contract (shared with
-Panaki for the front-end): [API_CONTRACT.md](./API_CONTRACT.md). Importable Postman collection:
+Architecture, data model and design rationale:
+[docs/03-technical-documentation.md](../docs/03-technical-documentation.md). Precise, up-to-date
+request/response contract (shared with Panaki for the front-end): [API_CONTRACT.md](./API_CONTRACT.md)
+- the source of truth for the API shape. Importable Postman collection:
 [docs/postman/BoxTrack.postman_collection.json](../docs/postman/BoxTrack.postman_collection.json)
 (login first - it saves the token for the rest of the collection automatically).
 
@@ -23,12 +23,15 @@ session would be picked as "current", for part of the night. `tv-now` is the ded
 the TV interface - see `API_CONTRACT.md` for its exact `current`/`next`/`remaining` shape (the
 backend computes this, the front-end doesn't need to re-sort/compare times itself).
 
-`POST /auth/login` is rate-limited (10 attempts / 15 min / IP) against password guessing.
+`POST /auth/login` is rate-limited (10 attempts / 15 min / IP) against password guessing, matches
+the email case-insensitively, and takes the same time to reject an unknown email as a wrong
+password (no account enumeration). Passwords are bcrypt-hashed; login tokens are random 256-bit
+values stored only as SHA-256 hashes, revoked on logout. Security headers come from `helmet`.
 
 ## Requirements
 
 - Node.js 18+
-- PostgreSQL 14+
+- PostgreSQL 14+ (or Docker, see below)
 
 ## Setup
 
@@ -38,11 +41,26 @@ npm install
 
 cp .env.example .env
 # edit .env: set DATABASE_URL to your local Postgres connection string
-
-createdb boxtrack   # or: psql -c "CREATE DATABASE boxtrack;"
-psql "$DATABASE_URL" -f db/schema.sql
-psql "$DATABASE_URL" -f db/seed.sql   # optional - demo coach + 8 realistic sessions (incl. 2 same-day slots)
 ```
+
+No local Postgres? One Docker command gives you one (then use
+`DATABASE_URL=postgres://boxtrack:boxtrack@localhost:5432/boxtrack`):
+
+```bash
+docker run -d --name boxtrack-pg -e POSTGRES_USER=boxtrack -e POSTGRES_PASSWORD=boxtrack \
+  -e POSTGRES_DB=boxtrack -p 5432:5432 postgres:16-alpine
+```
+
+Create the tables, with or without the demo data:
+
+```bash
+npm run db:setup -- --seed   # schema + demo coach + 8 realistic sessions (incl. 2 same-day slots)
+npm run db:setup             # schema only - what production uses
+```
+
+`db:setup` refuses to run on a database that already has the tables (it never drops anything).
+With `psql` installed, `psql "$DATABASE_URL" -f db/schema.sql` (then `-f db/seed.sql`) does the
+same thing.
 
 `db/schema.sql` is the canonical fresh-install script - it already reflects the current schema
 (real schedules, no Recipes tables). **If you have an existing database created from an older
@@ -57,15 +75,33 @@ See that file's header comment for exactly what it does to existing rows (nothin
 deleted - full explanation of the `time_slot` → `start_time`/`end_time` conversion, the default
 duration used, and what happens to Recipes data).
 
-Demo coach login (only if you ran `seed.sql`): `coach@crossfitlab.fr` / `CoachDemo2026!`
+Demo coach login (only if you ran the seed): `coach@crossfitlab.fr` / `CoachDemo2026!`. This
+password is public (it's in this file) - **never load the seed on the production database.**
+
+## Admin accounts
+
+There is no sign-up route (cahier des charges: no self-registration). Accounts are created from
+the command line, so no password ever lands in the repository:
+
+```bash
+npm run user:create -- --email timothe@crossfitlab.fr --role owner
+# prompts for the password (12 characters minimum, not echoed)
+```
+
+`--role` is `owner`, `coach` (default) or `staff`. Running it again for an existing email
+**resets that account's password** and logs it out everywhere. In a non-interactive shell (a
+hosting provider's console), pass the password through the environment instead:
+`BOXTRACK_PASSWORD='...' npm run user:create -- --email ...`.
 
 ## Environment variables
 
 | Variable | Description |
 |---|---|
 | `DATABASE_URL` | PostgreSQL connection string, e.g. `postgres://user:pass@localhost:5432/boxtrack`. |
-| `PORT` | Port the API listens on (defaults to `3000`). |
-| `FRONTEND_URL` | Set in production to lock CORS to the deployed frontend origin. Leave unset in dev to allow any origin. |
+| `PORT` | Port the API listens on (defaults to `3000`). Hosting providers set it themselves. |
+| `DATABASE_SSL` | `true` for a hosted database that requires TLS (Render, Railway, Neon...). Leave empty locally. |
+| `FRONTEND_URL` | Production: the deployed front-end origin(s), comma-separated, to lock CORS. Leave unset in dev to allow any origin. |
+| `TRUST_PROXY` | Production behind a reverse proxy: number of proxy hops (`1` on Render/Railway), so the login rate limiter sees real client IPs instead of the proxy's. |
 
 ## Running
 
@@ -75,14 +111,24 @@ npm start       # production
 ```
 
 `GET /health` returns `{ "status": "ok" }` once the server is up (no database query, safe for
-uptime checks). Every request is logged (`METHOD path status Nms`) to stdout.
+uptime checks). Every request is logged (`METHOD path status Nms`) to stdout, except under
+`NODE_ENV=test`. On `SIGTERM` (every redeploy) the server finishes in-flight requests and closes
+the database pool before exiting.
+
+### Production checklist
+
+1. Create an empty Postgres database, set `DATABASE_URL` (+ `DATABASE_SSL=true` if hosted).
+2. `npm ci --omit=dev && npm run db:setup` (schema only - no seed).
+3. `npm run user:create -- --email <owner email> --role owner` for Timothé's account.
+4. Set `FRONTEND_URL` and `TRUST_PROXY`, start with `npm start`, check `GET /health`.
 
 ## Lint & format
 
 ```bash
-npm run lint        # ESLint, zero warnings expected
-npm run lint:fix     # auto-fix what ESLint can
-npm run format       # Prettier, writes in place (JS only - doesn't touch the Markdown docs)
+npm run lint          # ESLint, zero warnings expected
+npm run lint:fix      # auto-fix what ESLint can
+npm run format        # Prettier, writes in place (JS only - doesn't touch the Markdown docs)
+npm run format:check  # what CI runs - fails if a file isn't formatted
 ```
 
 `lint`/`lint:fix` set `ESLINT_USE_FLAT_CONFIG=false` - without it, ESLint 8.57 walks up from
@@ -96,19 +142,20 @@ npm test               # unit tests - pure functions, no database needed
 npm run test:integration   # protected access, validation, persistence - needs a real database
 ```
 
-Unit tests (`tests/*.test.js`) cover pure logic: session assembly, schedule/role validation, the
-`/wods/tv-now` current/next/remaining selection (including Europe/Paris DST correctness), leaderboard
-ranking, token extraction, error formatting.
+Unit tests (`tests/*.test.js`, 56 tests) cover pure logic: session assembly, schedule/role
+validation, the `/wods/tv-now` current/next/remaining selection (including Europe/Paris DST
+correctness), leaderboard ranking (including ties), score-entry rules, input validators (calendar
+dates, http(s)-only URLs, ids), token extraction, error formatting.
 
-Integration tests (`tests/integration/`) run the real Express app with Supertest against a real
-Postgres database - they `TRUNCATE` every table before each test, so **never point them at your dev
-database**:
+Integration tests (`tests/integration/`, 58 tests) run the real Express app with Supertest against
+a real Postgres database - they `TRUNCATE` every table before each test, so **never point them at
+your dev database**:
 
 ```bash
-createdb boxtrack_test
+createdb boxtrack_test   # or a second database in the Docker container above
 cp .env.test.example .env.test
 # edit .env.test: set DATABASE_URL to the boxtrack_test database
-psql "$DATABASE_URL" -f db/schema.sql   # no seed - tests create their own fixtures
+DATABASE_URL=<the boxtrack_test URL> npm run db:setup   # no seed - tests create their own fixtures
 npm run test:integration
 ```
 
@@ -116,7 +163,12 @@ They cover what the CDC's Core V1 needs proven: admin routes reject missing/bad 
 valid ones (`auth.test.js`, `wodProtection.test.js`), every schedule/payload validation rule and
 the `(session_date, start_time)` conflict (`wodValidation.test.js`), and that a full nested session
 round-trips correctly through create/read/update/duplicate/delete, including `/wods/today` across
-multiple same-day sessions (`wodPersistence.test.js`).
+multiple same-day sessions (`wodPersistence.test.js`). `optionalFeatures.test.js` covers the
+Optional tier end to end: athlete soft-delete, score upsert and leaderboard ordering/ties,
+announcement visibility, QR code ordering and URL safety, and `401` on every optional admin route.
+
+**CI**: `.github/workflows/backend.yml` runs lint, format check, unit tests, then the integration
+tests against a Postgres service container, on every push and pull request touching `backend/`.
 
 ## API summary
 
