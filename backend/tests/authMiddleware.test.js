@@ -24,7 +24,9 @@ describe('extractToken', () => {
 describe('requireRole', () => {
   function run(req, allowedRoles) {
     let error;
-    requireRole(...allowedRoles)(req, {}, (err) => { error = err; });
+    requireRole(...allowedRoles)(req, {}, (err) => {
+      error = err;
+    });
     return error;
   }
 
