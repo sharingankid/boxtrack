@@ -1,8 +1,21 @@
 const qrCodeModel = require('../models/qrCodeModel');
 const ApiError = require('../utils/ApiError');
+const { assertValidId, isHttpUrl } = require('../utils/validators');
 
 async function list() {
   return qrCodeModel.list();
+}
+
+function assertValidUrl(url) {
+  if (!isHttpUrl(url)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'url must be a valid http(s) URL');
+  }
+}
+
+function assertValidOrderIndex(orderIndex) {
+  if (orderIndex !== undefined && !Number.isInteger(orderIndex)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'order_index must be an integer');
+  }
 }
 
 function assertValid(data) {
@@ -12,12 +25,8 @@ function assertValid(data) {
   if (!data.url) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'url is required');
   }
-  try {
-    // eslint-disable-next-line no-new
-    new URL(data.url);
-  } catch {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'url must be a valid absolute URL');
-  }
+  assertValidUrl(data.url);
+  assertValidOrderIndex(data.order_index);
 }
 
 async function create(data, userId) {
@@ -26,17 +35,13 @@ async function create(data, userId) {
 }
 
 async function update(id, data) {
+  assertValidId(id);
   if (data.label !== undefined && !data.label) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'label cannot be empty');
   }
-  if (data.url !== undefined) {
-    try {
-      // eslint-disable-next-line no-new
-      new URL(data.url);
-    } catch {
-      throw new ApiError(400, 'VALIDATION_ERROR', 'url must be a valid absolute URL');
-    }
-  }
+  if (data.url !== undefined) assertValidUrl(data.url);
+  assertValidOrderIndex(data.order_index);
+
   const updated = await qrCodeModel.update(id, data);
   if (!updated) {
     throw new ApiError(404, 'NOT_FOUND', 'QR code not found');
@@ -45,6 +50,7 @@ async function update(id, data) {
 }
 
 async function remove(id) {
+  assertValidId(id);
   const deleted = await qrCodeModel.remove(id);
   if (!deleted) {
     throw new ApiError(404, 'NOT_FOUND', 'QR code not found');

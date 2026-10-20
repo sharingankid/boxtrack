@@ -1,0 +1,218 @@
+(node:10288) [DEP0176] DeprecationWarning: fs.F_OK is deprecated, use fs.constants.F_OK instead
+(Use `node --trace-deprecation ...` to show where the warning was created)
+newman
+
+BoxTrack API
+
+Folder 0 - Health
+Sub-folder Health check
+  GET http://localhost:3000/health [200 OK, 921B, 24ms]
+  Pass  Status 200
+  Pass  API reports ok
+
+Folder 1 - Auth
+Sub-folder Login - wrong password is rejected
+  POST http://localhost:3000/api/auth/login [401 Unauthorized, 995B, 74ms]
+  Pass  Status 401
+  Pass  Error code is INVALID_CREDENTIALS
+
+Sub-folder Login - unknown email gets the same answer
+  POST http://localhost:3000/api/auth/login [401 Unauthorized, 995B, 56ms]
+  Pass  Status 401
+  Pass  Error code is INVALID_CREDENTIALS
+
+Sub-folder Login (saves {{token}})
+  POST http://localhost:3000/api/auth/login [200 OK, 1.05kB, 62ms]
+  Pass  Status 200
+  Pass  Returns a token and the user role
+
+Folder 2 - Security - admin routes reject unauthenticated calls
+Sub-folder Create session without token
+  POST http://localhost:3000/api/admin/wods [401 Unauthorized, 1.01kB, 3ms]
+  Pass  Status 401
+  Pass  Error code is UNAUTHENTICATED
+
+Sub-folder Update session without token
+  PUT http://localhost:3000/api/admin/wods/1 [401 Unauthorized, 1.01kB, 3ms]
+  Pass  Status 401
+
+Sub-folder Delete session without token
+  DELETE http://localhost:3000/api/admin/wods/1 [401 Unauthorized, 1.01kB, 3ms]
+  Pass  Status 401
+
+Sub-folder Create session with a forged token
+  POST http://localhost:3000/api/admin/wods [401 Unauthorized, 992B, 5ms]
+  Pass  Status 401
+
+Sub-folder Athlete roster without token
+  GET http://localhost:3000/api/admin/athletes [401 Unauthorized, 1.01kB, 3ms]
+  Pass  Status 401
+
+Sub-folder Record a score without token
+  POST http://localhost:3000/api/admin/wods/1/scores [401 Unauthorized, 1.01kB, 3ms]
+  Pass  Status 401
+
+Folder 3 - Sessions - public
+Sub-folder Today's sessions
+  GET http://localhost:3000/api/wods/today [200 OK, 2.47kB, 17ms]
+  Pass  Status 200
+  Pass  Returns an array sorted by start_time
+
+Sub-folder TV view state (current / next / remaining)
+  GET http://localhost:3000/api/wods/tv-now [200 OK, 1.03kB, 12ms]
+  Pass  Status 200
+  Pass  Has the TV contract keys
+
+Sub-folder History (date range)
+  GET http://localhost:3000/api/wods?from=2026-01-01&to=2030-12-31 [200 OK, 1.8kB, 5ms]
+  Pass  Status 200
+  Pass  Returns summaries
+
+Sub-folder History - from after to is rejected
+  GET http://localhost:3000/api/wods?from=2026-12-01&to=2026-01-01 [400 Bad Request, 994B, 3ms]
+  Pass  Status 400
+  Pass  Error code is VALIDATION_ERROR
+
+Sub-folder History - impossible date is rejected
+  GET http://localhost:3000/api/wods?from=2026-02-31 [400 Bad Request, 1kB, 3ms]
+  Pass  Status 400
+
+Sub-folder Session detail - non-numeric id
+  GET http://localhost:3000/api/wods/abc [400 Bad Request, 992B, 3ms]
+  Pass  Status 400
+
+Folder 4 - Sessions - admin (coach)
+Sub-folder Create session (saves {{wod_id}})
+  POST http://localhost:3000/api/admin/wods [201 Created, 1.61kB, 21ms]
+  Pass  Status 201
+  Pass  Persists the three phases
+
+Sub-folder Session detail
+  GET http://localhost:3000/api/wods/12 [200 OK, 1.61kB, 21ms]
+  Pass  Status 200
+  Pass  Movement order is kept
+
+Sub-folder Create - same date and start_time is a conflict
+  POST http://localhost:3000/api/admin/wods [409 Conflict, 1.02kB, 9ms]
+  Pass  Status 409
+  Pass  Error code is DUPLICATE_SESSION
+
+Sub-folder Create - end_time before start_time is rejected
+  POST http://localhost:3000/api/admin/wods [400 Bad Request, 999B, 6ms]
+  Pass  Status 400
+  Pass  Error code is VALIDATION_ERROR
+
+Sub-folder Create - unknown WOD format is rejected
+  POST http://localhost:3000/api/admin/wods [400 Bad Request, 1.04kB, 6ms]
+  Pass  Status 400
+
+Sub-folder Update session (WOD becomes For Time)
+  PUT http://localhost:3000/api/admin/wods/12 [200 OK, 1.52kB, 21ms]
+  Pass  Status 200
+  Pass  WOD block replaced
+
+Sub-folder Duplicate session one week later (saves {{dup_id}})
+  POST http://localhost:3000/api/admin/wods/12/duplicate [201 Created, 1.52kB, 23ms]
+  Pass  Status 201
+
+Sub-folder Delete the duplicate
+  DELETE http://localhost:3000/api/admin/wods/14 [204 No Content, 806B, 9ms]
+  Pass  Status 204
+
+Sub-folder Deleted session is gone
+  GET http://localhost:3000/api/wods/14 [404 Not Found, 974B, 3ms]
+  Pass  Status 404
+
+Folder 5 - Optional tier
+Sub-folder Create athlete (saves {{athlete_id}})
+  POST http://localhost:3000/api/admin/athletes [201 Created, 1.09kB, 8ms]
+  Pass  Status 201
+
+Sub-folder Athlete - javascript: photo_url is rejected
+  POST http://localhost:3000/api/admin/athletes [400 Bad Request, 1kB, 4ms]
+  Pass  Status 400
+
+Sub-folder Active athletes
+  GET http://localhost:3000/api/admin/athletes?active=true [200 OK, 1.74kB, 7ms]
+  Pass  Status 200
+  Pass  Contains the new athlete
+
+Sub-folder Record a score (saves {{score_id}})
+  POST http://localhost:3000/api/admin/wods/12/scores [201 Created, 1.12kB, 15ms]
+  Pass  Status 201
+
+Sub-folder Leaderboard
+  GET http://localhost:3000/api/wods/12/leaderboard [200 OK, 1.21kB, 8ms]
+  Pass  Status 200
+  Pass  For Time ranks fastest first, RX has our athlete at rank 1
+
+Sub-folder Create announcement (saves {{announcement_id}})
+  POST http://localhost:3000/api/admin/announcements [201 Created, 1.11kB, 7ms]
+  Pass  Status 201
+
+Sub-folder Public announcements
+  GET http://localhost:3000/api/announcements [200 OK, 1.82kB, 4ms]
+  Pass  Status 200
+  Pass  Includes the new announcement
+
+Sub-folder Create QR code (saves {{qr_id}})
+  POST http://localhost:3000/api/admin/qrcodes [201 Created, 1.06kB, 8ms]
+  Pass  Status 201
+
+Sub-folder QR code - javascript: URL is rejected
+  POST http://localhost:3000/api/admin/qrcodes [400 Bad Request, 997B, 5ms]
+  Pass  Status 400
+
+Sub-folder Public QR codes
+  GET http://localhost:3000/api/qrcodes [200 OK, 1.48kB, 4ms]
+  Pass  Status 200
+  Pass  Returns a list
+
+Sub-folder Cleanup - delete score
+  DELETE http://localhost:3000/api/admin/scores/6 [204 No Content, 806B, 6ms]
+  Pass  Status 204
+
+Sub-folder Cleanup - delete announcement
+  DELETE http://localhost:3000/api/admin/announcements/5 [204 No Content, 806B, 6ms]
+  Pass  Status 204
+
+Sub-folder Cleanup - delete QR code
+  DELETE http://localhost:3000/api/admin/qrcodes/5 [204 No Content, 806B, 7ms]
+  Pass  Status 204
+
+Sub-folder Cleanup - deactivate athlete
+  PUT http://localhost:3000/api/admin/athletes/7 [200 OK, 1.08kB, 7ms]
+  Pass  Status 200
+
+Sub-folder Cleanup - delete session
+  DELETE http://localhost:3000/api/admin/wods/12 [204 No Content, 806B, 8ms]
+  Pass  Status 204
+
+Folder 6 - Logout
+Sub-folder Logout
+  POST http://localhost:3000/api/auth/logout [204 No Content, 806B, 7ms]
+  Pass  Status 204
+
+Sub-folder Token no longer works after logout
+  POST http://localhost:3000/api/admin/wods [401 Unauthorized, 992B, 5ms]
+  Pass  Status 401
+
+-----------------------------------------------------------------
+|                         |         executed |           failed |
+--------------------------+------------------+-------------------
+|              iterations |                1 |                0 |
+--------------------------+------------------+-------------------
+|                requests |               42 |                0 |
+--------------------------+------------------+-------------------
+|            test-scripts |               42 |                0 |
+--------------------------+------------------+-------------------
+|      prerequest-scripts |                1 |                0 |
+--------------------------+------------------+-------------------
+|              assertions |               60 |                0 |
+-----------------------------------------------------------------
+| total run duration: 3.9s                                      |
+-----------------------------------------------------------------
+| total data received: 10.39kB (approx)                         |
+-----------------------------------------------------------------
+| average response time: 12ms [min: 3ms, max: 74ms, s.d.: 15ms] |
+-----------------------------------------------------------------

@@ -53,8 +53,13 @@ Email + password login, bcrypt-hashed passwords, a real session table (not a sta
 
 | Error | Meaning |
 |---|---|
-| `400 VALIDATION_ERROR` | Missing `email`/`password` on login. |
-| `401 INVALID_CREDENTIALS` | Wrong email or password - same message for both, so the UI can't be used to enumerate valid emails. |
+| `400 VALIDATION_ERROR` | Missing `email`/`password` on login (or not strings). |
+| `401 INVALID_CREDENTIALS` | Wrong email or password - same message **and same response time** for both, so neither the UI nor timing can be used to enumerate valid emails. |
+| `429 TOO_MANY_REQUESTS` | More than 10 login attempts in 15 minutes from the same IP. |
+
+The email is matched case-insensitively and trimmed (`" Coach@CrossfitLab.fr "` logs into
+`coach@crossfitlab.fr`). Accounts are created with `npm run user:create` (see `backend/README.md`),
+never through the API.
 | `401 UNAUTHENTICATED` | Missing/malformed/invalid/expired token on an admin route. |
 | `403 FORBIDDEN` | Valid token, but the user's role isn't allowed on this route (not used by any route yet - see above). |
 
@@ -198,7 +203,8 @@ nested shape - fetch `/wods/:id` for detail):
 `format` is `null` if the coach hasn't filled in the WOD block yet. Sorted newest date first, then
 by `start_time`.
 
-**Errors:** `400 VALIDATION_ERROR` if `from`/`to` are present but not valid `YYYY-MM-DD` dates.
+**Errors:** `400 VALIDATION_ERROR` if `from`/`to` are present but not real `YYYY-MM-DD` calendar
+dates (`2026-02-31` is rejected), or if `from` is after `to`.
 
 ### `GET /api/wods/:id` - public
 
@@ -282,12 +288,15 @@ rules as `POST`) · `409 DUPLICATE_SESSION` · `401 UNAUTHENTICATED`.
 
 Built after the Core WOD flow, per the CDC's Core-before-Optional ordering. Summarized here for
 completeness - see `src/controllers/{athlete,score,announcement,qrCode}Controller.js` for the full
-implementation if a field's exact shape isn't obvious below.
+implementation if a field's exact shape isn't obvious below. Every `:id` must be a positive integer
+(`400 VALIDATION_ERROR` otherwise, never a `500`); a missing resource is `404 NOT_FOUND`.
 
 ### Athletes - `GET/POST/PUT /admin/athletes[/:id]` (authenticated, no public route)
 
 Coach-managed roster: `{ id, first_name, last_name, photo_url, active, created_at, updated_at }`.
 No delete - `PUT` with `{ "active": false }` deactivates (soft-delete, keeps score history intact).
+`GET /admin/athletes?active=true|false` filters (any other value is a `400`). `photo_url` is
+optional but must be an `http(s)` URL when sent; `active` must be a real JSON boolean.
 
 ### Scores & leaderboard
 
@@ -295,25 +304,49 @@ No delete - `PUT` with `{ "active": false }` deactivates (soft-delete, keeps sco
   `category` one of `RX`/`Scaled`/`Modified`. `result_value` is always numeric: a time-based WOD
   (`FOR_TIME`, `CHIPPER`) is entered as total seconds (convert `MM:SS` client-side), everything
   else (`AMRAP`, `EMOM`, `TABATA`, `STRENGTH`) as a plain number (reps/rounds/kg). Upserts - a
-  second score for the same athlete on the same WOD replaces the first.
+  second score for the same athlete on the same WOD replaces the first. `400` if the athlete
+  doesn't exist **or is deactivated** (a member who left keeps past scores but gets no new ones),
+  or if the session has no WOD block.
 - `DELETE /admin/scores/:id` (authenticated).
 - `GET /wods/:id/leaderboard` (public) - ranked per category (RX ranked only against RX, etc.),
   ascending for time-based formats, descending otherwise - the direction is derived from the WOD's
-  own `format`, never stored on the score itself.
+  own `format`, never stored on the score itself. **Ties share a rank** (standard competition
+  ranking: two athletes on `754` s are both `rank: 1`, the next one is `rank: 3`).
+
+```json
+{
+  "wod_id": 7, "format": "FOR_TIME", "sort": "asc",
+  "rankings": {
+    "RX": [ { "rank": 1, "id": 3, "wod_id": 7, "athlete": { "id": 2, "first_name": "Léa", "last_name": "Martin" }, "category": "RX", "result_value": 754, "created_at": "...", "updated_at": "..." } ],
+    "Scaled": [],
+    "Modified": []
+  }
+}
+```
 
 ### Announcements - `GET /announcements` (public, active only), `GET/POST/PUT/DELETE /admin/announcements[/:id]` (authenticated, all)
 
-`{ id, title, body, active, created_at, updated_at }`. `active: false` unpublishes without
-deleting.
+`{ id, title, body, active, created_at, updated_at }`, newest first. `title` required;
+`active: false` (a JSON boolean) unpublishes without deleting.
 
 ### QR codes - `GET /qrcodes` (public), `POST/PUT/DELETE /admin/qrcodes[/:id]` (authenticated)
 
-`{ id, label, url, order_index, created_at }`. Generated client-side from `url` - nothing image-like
-is stored server-side.
+`{ id, label, url, order_index, created_at }`, sorted by `order_index`. Generated client-side from
+`url` - nothing image-like is stored server-side. `label` and `url` required; `url` must be an
+`http(s)` URL (`javascript:`/`data:` links are refused, since the front renders it as a link);
+`order_index` an integer. The public `GET /qrcodes` is also what the admin screen lists.
 
 ---
 
 ## Changelog - breaking changes from the previous version of this contract
+
+**Validation hardening (October 2026).** Front-end impact, if any, is a `400` where the previous
+version accepted bad data:
+- Impossible dates (`2026-02-31`) and `from` after `to` on `GET /wods` → `400`.
+- QR code `url` and athlete `photo_url` must be `http(s)`.
+- `active` (athletes, announcements) must be a JSON boolean, not `"false"`.
+- New scores for a deactivated athlete → `400`.
+- Leaderboard ties now share a rank (was: different ranks by insertion order).
 
 **Recipes/Spoonacular removed entirely.** Every `/recipes` and `/admin/recipes` route, the Recipe
 object, and the `SPOONACULAR_API_KEY` env var are gone - this was a sponsor-approved side feature,
