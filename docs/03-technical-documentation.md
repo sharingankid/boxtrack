@@ -153,7 +153,7 @@ src/
 | Component | Tier | Responsibility |
 |---|---|---|
 | `AuthController` / `authService` | `CORE` | Login (verify hashed password, issue session token). |
-| `WodController` / `wodService` / `WodModel` | `CORE` | CRUD for a full session: `wods` row + its `skill_strength_blocks`, `wod_blocks`, and ordered `movements` rows, assembled/disassembled as one nested JSON object per request. Enforces "one session per date". |
+| `WodController` / `wodService` / `WodModel` | `CORE` | CRUD for a full session: `wods` row + its `skill_strength_blocks`, `wod_blocks`, and ordered `movements` rows, assembled/disassembled as one nested JSON object per request. Enforces uniqueness of `(session_date, time_slot)`. |
 | `authMiddleware` | `CORE` | Verifies the coach's session on all `/api/admin/*` routes, attaches `req.user`, rejects with 401/403 otherwise. |
 | `ScoreController` / `scoreService` / `ScoreModel` | `OPTIONAL` | Create/update a score; enforces `UNIQUE(wod_id, athlete_id)`; triggers ranking recompute. |
 | `LeaderboardService` | `OPTIONAL` | Computes ranking for a given WOD (server-side, one indexed SQL query, grouped by category). |
@@ -162,6 +162,14 @@ src/
 | `QrCodeController` / `qrCodeService` | `OPTIONAL` | CRUD for labeled QR code entries. |
 
 ### 2.2 Front-end structure (React)
+
+The single React/Vite application lives in `frontend/`; the Express API lives in
+`backend/`. Start and check each package from its own directory. The history API
+returns summaries; the front-end loads the full detail before displaying or editing
+Warm-Up, Skill/Strength and WOD. `/screen` refreshes every 30 seconds and fits all
+phase content to its viewport. The component table below describes the planned
+responsibilities; implemented pages are `HomePage`, `HistoryPage`, `SessionPage`,
+`EditorPage`, `LoginPage` and `ScreenPage`.
 
 | Component | Tier | Responsibility |
 |---|---|---|
@@ -199,7 +207,7 @@ erDiagram
     }
     WODS {
         int id PK
-        date session_date UK "one session per date"
+        date session_date "unique with time_slot"
         string time_slot
         text warmup_general
         text warmup_specific
@@ -289,8 +297,8 @@ erDiagram
   6 WOD formats score fundamentally different things (a time, a rep count, a round count, or a
   load), a single "score" leaderboard/ranking query needs to know exactly which column to sort by
   per format; `result_raw` remains the human-readable display value shown everywhere else.
-- **`WODS.UNIQUE(session_date)`** - enforces "one session per date" at the database level, not just
-  in application logic (`CORE`, non-negotiable per the cahier des charges).
+- **`WODS.UNIQUE(session_date, time_slot)`** - permits multiple sessions on a date while
+  rejecting duplicate slots at the database level.
 - **`SCORES.UNIQUE(wod_id, athlete_id)`** (`OPTIONAL`) - one score per athlete per WOD; edits update
   the existing row rather than inserting a duplicate.
 - **`ATHLETES.active`** (`OPTIONAL`) is a soft-delete flag: deactivating an athlete hides them from
@@ -430,7 +438,7 @@ Base URL: `/api`. All admin routes require `Authorization: Bearer <token>` and a
 | GET | `/api/wods/today` | Public | — | `200 { wod }` (full nested session) / `404` if none published |
 | GET | `/api/wods` | Public | Query: `?from=&to=` (optional date range) | `200 { wods: [...] }` (summaries, for history nav) |
 | GET | `/api/wods/:id` | Public | — | `200 { wod }` (full nested session) / `404` |
-| POST | `/api/admin/wods` | Coach | `{ session_date, time_slot, warmup: { general, specific }, skill_strength: { kind, instructions, movements: [{ movement_name, detail }] }, wod: { format, duration_or_target, notes, movements: [{ movement_name, detail }] } }` | `201 { wod }` / `409` if the date already has a session |
+| POST | `/api/admin/wods` | Coach | `{ session_date, time_slot, warmup: { general, specific }, skill_strength: { kind, instructions, movements: [{ movement_name, detail }] }, wod: { format, duration_or_target, notes, movements: [{ movement_name, detail }] } }` | `201 { wod }` / `409` if the date and time slot already have a session |
 | PUT | `/api/admin/wods/:id` | Coach | Same shape, any subset of fields | `200 { wod }` / `404` |
 | DELETE | `/api/admin/wods/:id` | Coach | — | `204` / `404` |
 
@@ -487,7 +495,7 @@ Base URL: `/api`. All admin routes require `Authorization: Bearer <token>` and a
 | Test type | Scope | Tooling |
 |---|---|---|
 | **Unit tests** | Services and models in isolation (e.g. session assembly/disassembly across `wods`/`skill_strength_blocks`/`wod_blocks`/`movements`, auth password-check helper, and - `OPTIONAL` - ranking computation, score upsert logic). | Jest |
-| **Integration tests** | API endpoints against a real test database (e.g. login rejects wrong password, admin routes reject missing/invalid session with 401/403, `wods.session_date` `UNIQUE` constraint returns a clean error instead of a 500). | Jest + Supertest, seeded test PostgreSQL instance |
+| **Integration tests** | API endpoints against a real test database (e.g. login rejects wrong password, admin routes reject missing/invalid session with 401/403, `(session_date, time_slot)` uniqueness constraint returns a clean error instead of a 500). | Jest + Supertest, seeded test PostgreSQL instance |
 | **Manual/exploratory testing** | Critical `CORE` flow first: publish a full session (<5 min, no training) -> public display -> `/screen` projection on an actual TV/large display at 5-8m for contrast and layout; `OPTIONAL` flow (score entry -> leaderboard) tested only once `CORE` is signed off. | Manual, checklist per sprint |
 | **API contract testing** | Verifying request/response shapes against Section 4 before front-end integration. | Postman collection, exported and versioned in `/docs/postman/` |
 | **Accessibility check** | WCAG AAA contrast validation specifically for `/screen` (SMART goal 3, [01-idea-development.md §3.6](01-idea-development.md)). | Browser DevTools contrast checker / axe |

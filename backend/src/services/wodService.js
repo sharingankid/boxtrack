@@ -1,21 +1,14 @@
 const wodModel = require('../models/wodModel');
 const ApiError = require('../utils/ApiError');
+const { assertValidId, isValidIsoDate } = require('../utils/validators');
 
 const VALID_FORMATS = ['AMRAP', 'FOR_TIME', 'EMOM', 'TABATA', 'CHIPPER', 'STRENGTH'];
 const VALID_KINDS = ['skill', 'strength'];
-const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const HHMM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
-const ID_RE = /^\d+$/;
 
-function assertValidId(id) {
-  if (!ID_RE.test(String(id))) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'id must be a valid integer');
-  }
-}
-
-function assertValidSessionDate(sessionDate) {
-  if (!ISO_DATE_RE.test(sessionDate) || Number.isNaN(Date.parse(sessionDate))) {
-    throw new ApiError(400, 'VALIDATION_ERROR', 'session_date must be a valid YYYY-MM-DD date');
+function assertValidSessionDate(sessionDate, label = 'session_date') {
+  if (!isValidIsoDate(sessionDate)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', `${label} must be a valid YYYY-MM-DD date`);
   }
 }
 
@@ -65,11 +58,7 @@ function assertValidMovements(movements, label) {
   }
   movements.forEach((movement, index) => {
     if (!movement || typeof movement.movement_name !== 'string' || !movement.movement_name.trim()) {
-      throw new ApiError(
-        400,
-        'VALIDATION_ERROR',
-        `${label}.movements[${index}].movement_name is required`
-      );
+      throw new ApiError(400, 'VALIDATION_ERROR', `${label}.movements[${index}].movement_name is required`);
     }
   });
 }
@@ -138,8 +127,11 @@ async function getById(id) {
 }
 
 async function list({ from, to }) {
-  if (from !== undefined) assertValidSessionDate(from);
-  if (to !== undefined) assertValidSessionDate(to);
+  if (from !== undefined) assertValidSessionDate(from, 'from');
+  if (to !== undefined) assertValidSessionDate(to, 'to');
+  if (from !== undefined && to !== undefined && from > to) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'from must be on or before to');
+  }
   return wodModel.listSummaries({ from, to });
 }
 
@@ -173,7 +165,11 @@ function assertRestOfPayload(data) {
 // surface as clean business errors, never a 500.
 function mapScheduleConflict(err) {
   if (err.code === '23505') {
-    return new ApiError(409, 'DUPLICATE_SESSION', 'A session already exists for this exact date and start_time');
+    return new ApiError(
+      409,
+      'DUPLICATE_SESSION',
+      'A session already exists for this exact date and start_time'
+    );
   }
   if (err.code === '23514') {
     return new ApiError(400, 'VALIDATION_ERROR', 'end_time must be after start_time');
