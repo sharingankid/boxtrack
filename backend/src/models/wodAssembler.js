@@ -9,11 +9,20 @@ function movementsForPhase(movementRows, phase) {
     .map((m) => ({ movement_name: m.movement_name, detail: m.detail }));
 }
 
+// pg returns TIME columns as "HH:MM:SS" strings (no timezone conversion,
+// unlike timestamptz) - trimmed to "HH:mm" for the API, per
+// backend/API_CONTRACT.md.
+function toHoursMinutes(value) {
+  return value ? value.slice(0, 5) : value;
+}
+
 function assemble(wodRow, skillStrengthRow, wodBlockRow, movementRows) {
   return {
     id: wodRow.id,
     session_date: wodRow.session_date,
-    time_slot: wodRow.time_slot,
+    start_time: toHoursMinutes(wodRow.start_time),
+    end_time: toHoursMinutes(wodRow.end_time),
+    title: wodRow.title,
     warmup: {
       general: wodRow.warmup_general,
       specific: wodRow.warmup_specific,
