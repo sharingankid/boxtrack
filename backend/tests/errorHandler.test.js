@@ -33,4 +33,30 @@ describe('errorHandler', () => {
 
     console.error = originalError;
   });
+
+  it('turns a predictable Postgres NOT NULL violation into a 400, not a 500', () => {
+    const res = mockRes();
+    const pgErr = new Error('null value in column "format" violates not-null constraint');
+    pgErr.code = '23502';
+
+    errorHandler(pgErr, {}, res, () => {});
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { code: 'VALIDATION_ERROR', message: 'A required field is missing' },
+    });
+  });
+
+  it('turns a predictable Postgres invalid-date-format error into a 400, not a 500', () => {
+    const res = mockRes();
+    const pgErr = new Error('date/time field value out of range: "cacahuete"');
+    pgErr.code = '22007';
+
+    errorHandler(pgErr, {}, res, () => {});
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { code: 'VALIDATION_ERROR', message: 'A date/time value is invalid' },
+    });
+  });
 });

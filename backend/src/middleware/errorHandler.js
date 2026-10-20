@@ -12,6 +12,23 @@ function errorHandler(err, req, res, next) {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Malformed JSON body' } });
   }
 
+  // Safety net: a handful of Postgres error codes are always the client's
+  // fault (missing required field, malformed date/number) - surface them as
+  // a clean 400 instead of leaking a 500, even if a future field slips past
+  // application-level validation. See docs/03-technical-documentation.md.
+  const CLIENT_FAULT_PG_CODES = {
+    23502: 'A required field is missing',
+    22007: 'A date/time value is invalid',
+    22008: 'A date/time value is invalid',
+    '22P02': 'A field has an invalid format',
+    23514: 'A field violates a business rule (e.g. end_time must be after start_time)',
+  };
+  if (err.code in CLIENT_FAULT_PG_CODES) {
+    return res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: CLIENT_FAULT_PG_CODES[err.code] } });
+  }
+
   console.error(err);
   return res.status(500).json({
     error: { code: 'INTERNAL_ERROR', message: 'Something went wrong.' },

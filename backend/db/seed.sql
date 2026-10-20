@@ -12,10 +12,10 @@ VALUES ('coach@crossfitlab.fr', '$2b$10$ZHRW5GBQ4rO9gsPipqz6K./DjNjF06fqelyIkSxr
 
 -- Day -6: STRENGTH
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE - INTERVAL '6 day',
-        '18:00',
+        '18:00', '19:00',
         '5 min bike + dynamic mobility (hips, ankles, shoulders)',
         'Empty barbell: 2x5 back squat, 2x5 good morning',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -38,10 +38,10 @@ SELECT id, 'wod', 'Back Squat', 'Top set of 5 at the heaviest load from Skill/St
 
 -- Day -5: AMRAP
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE - INTERVAL '5 day',
-        '18:00',
+        '18:00', '19:00',
         '3 min row + arm circles + air squats',
         '2 rounds: 5 pull-up progressions, 5 box step-ups',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -66,10 +66,10 @@ INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
 
 -- Day -4: FOR TIME
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE - INTERVAL '4 day',
-        '18:00',
+        '18:00', '19:00',
         '400m jog + leg swings',
         'Empty barbell thrusters x10, light pull-up practice',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -93,10 +93,10 @@ INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
 
 -- Day -3: EMOM
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE - INTERVAL '3 day',
-        '18:00',
+        '18:00', '19:00',
         '3 min jump rope + hip openers',
         'Light snatch pulls x5, 2 rounds',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -120,10 +120,10 @@ INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
 
 -- Day -2: TABATA
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE - INTERVAL '2 day',
-        '18:00',
+        '18:00', '19:00',
         '3 min row easy + dynamic stretching',
         '1 round of each movement at low intensity to rehearse the switches',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -149,10 +149,10 @@ INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
 
 -- Day -1: CHIPPER
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE - INTERVAL '1 day',
-        '18:00',
+        '18:00', '19:00',
         '500m row + mobility flow',
         'Light box jump step-ups x10, empty-bar OHS x5',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -177,12 +177,13 @@ INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
     ((SELECT id FROM wods WHERE session_date = CURRENT_DATE - INTERVAL '1 day'), 'wod', 'Overhead Squat', '20 reps @ 30/20 kg', 3),
     ((SELECT id FROM wods WHERE session_date = CURRENT_DATE - INTERVAL '1 day'), 'wod', 'Bar Muscle-Up', '10 reps', 4);
 
--- Today: AMRAP
+-- Today, 18:00: AMRAP
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, title, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE,
-        '18:00',
+        '18:00', '19:00',
+        'Evening class',
         '400m run + shoulder/hip mobility',
         '2 rounds: 5 deadlift (empty bar), 5 burpee, easy pace',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -199,19 +200,21 @@ SELECT id, 'AMRAP', '15 min', 'Short and intense - pick a round pace you can hol
 FROM new_wod;
 
 INSERT INTO movements (wod_id, phase, movement_name, detail, order_index)
-SELECT id, 'skill_strength', 'Deadlift', '3x5, moderate load', 0 FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00';
+SELECT id, 'skill_strength', 'Deadlift', '3x5, moderate load', 0 FROM wods WHERE session_date = CURRENT_DATE AND start_time = '18:00';
 INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00'), 'wod', 'Deadlift', '10 reps @ 60/40 kg', 0),
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00'), 'wod', 'Burpee', '10 reps', 1),
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '18:00'), 'wod', 'Box Jump', '10 reps @ 24/20 in', 2);
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND start_time = '18:00'), 'wod', 'Deadlift', '10 reps @ 60/40 kg', 0),
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND start_time = '18:00'), 'wod', 'Burpee', '10 reps', 1),
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND start_time = '18:00'), 'wod', 'Box Jump', '10 reps @ 24/20 in', 2);
 
 -- Today, second slot: demonstrates that a date can hold more than one
--- session (date, time_slot) is the real uniqueness key, not date alone.
+-- session - (session_date, start_time) is the real uniqueness key, not
+-- date alone.
 WITH new_wod AS (
-    INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
+    INSERT INTO wods (session_date, start_time, end_time, title, warmup_general, warmup_specific, created_by)
     VALUES (
         CURRENT_DATE,
-        '06:00',
+        '06:00', '06:40',
+        'Early class',
         '3 min easy bike + arm circles',
         'Empty-bar press x10, light row intervals',
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
@@ -228,9 +231,60 @@ SELECT id, 'EMOM', '10 min', 'Early class, smaller/faster format on purpose.'
 FROM new_wod;
 
 INSERT INTO movements (wod_id, phase, movement_name, detail, order_index)
-SELECT id, 'skill_strength', 'Strict Press', '3x5 @ light load', 0 FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00';
+SELECT id, 'skill_strength', 'Strict Press', '3x5 @ light load', 0 FROM wods WHERE session_date = CURRENT_DATE AND start_time = '06:00';
 INSERT INTO movements (wod_id, phase, movement_name, detail, order_index) VALUES
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00'), 'wod', 'Row', '15 cal', 0),
-    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND time_slot = '06:00'), 'wod', 'Strict Press', '8 reps @ 30/20 kg', 1);
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND start_time = '06:00'), 'wod', 'Row', '15 cal', 0),
+    ((SELECT id FROM wods WHERE session_date = CURRENT_DATE AND start_time = '06:00'), 'wod', 'Strict Press', '8 reps @ 30/20 kg', 1);
+
+-- ============================================================
+-- Optional tier demo data
+-- ============================================================
+
+INSERT INTO athletes (first_name, last_name, created_by) VALUES
+    ('Léa', 'Bernard', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Thomas', 'Nguyen', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Camille', 'Petit', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Hugo', 'Moreau', (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr'));
+
+INSERT INTO athletes (first_name, last_name, active, created_by) VALUES
+    ('Inès', 'Roux', false, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr'));
+
+-- Scores for today's 18:00 AMRAP session (higher result_value wins).
+INSERT INTO scores (wod_id, athlete_id, category, result_value, recorded_by)
+SELECT
+    (SELECT id FROM wods WHERE session_date = CURRENT_DATE AND start_time = '18:00'),
+    athletes.id,
+    t.category,
+    t.result_value,
+    (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+FROM (VALUES
+    ('Bernard', 'RX', 187),
+    ('Nguyen', 'RX', 164),
+    ('Petit', 'Scaled', 142),
+    ('Moreau', 'RX', 201)
+) AS t(last_name, category, result_value)
+JOIN athletes ON athletes.last_name = t.last_name;
+
+INSERT INTO announcements (title, body, created_by) VALUES
+    (
+        'Open Day samedi 14 novembre',
+        'Portes ouvertes toute la journée, amenez un ami pour une séance découverte gratuite.',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    ),
+    (
+        'Fermeture exceptionnelle le 1er novembre',
+        'La box sera fermée pour le jour férié. Reprise normale le lendemain.',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    ),
+    (
+        'Nouveau coach : Marine',
+        'Marine rejoint l''équipe de coachs à partir du mois prochain, spécialisée en haltérophilie.',
+        (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
+    );
+
+INSERT INTO qr_codes (label, url, order_index, created_by) VALUES
+    ('Avis Google', 'https://g.page/r/crossfit-lab-toulouse/review', 0, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Instagram', 'https://instagram.com/crossfitlab.toulouse', 1, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')),
+    ('Groupe WhatsApp', 'https://chat.whatsapp.com/crossfitlab-demo', 2, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr'));
 
 COMMIT;

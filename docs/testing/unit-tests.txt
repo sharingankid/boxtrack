@@ -1,0 +1,93 @@
+
+> boxtrack-backend@0.1.0 test
+> jest --runInBand --testPathIgnorePatterns=tests/integration --verbose --silent
+
+PASS tests/validators.test.js
+  isValidIsoDate
+    √ accepts a real calendar date (2 ms)
+    √ rejects dates that only look valid
+    √ rejects other formats and non-strings
+  isHttpUrl
+    √ accepts http and https links
+    √ rejects script and data URLs
+    √ rejects relative or malformed values
+  assertValidId
+    √ accepts positive integers, as numbers or route-param strings
+    √ rejects anything else with a 400 (10 ms)
+  assertOptionalBoolean
+    √ lets undefined and real booleans through (1 ms)
+    √ rejects boolean-looking strings
+
+PASS tests/authMiddleware.test.js
+  extractToken
+    √ reads the token out of a well-formed Bearer header (1 ms)
+    √ returns null when the header is missing
+    √ returns null when the scheme is not Bearer (1 ms)
+    √ returns null when the header has no token
+  requireRole
+    √ calls next() with no error when the user has an allowed role
+    √ calls next(err) with a 403 FORBIDDEN when the role is not allowed (1 ms)
+    √ denies a missing user/role the same way (never crashes)
+
+PASS tests/wodService.test.js
+  wodService.create - validation
+    √ rejects a malformed session_date instead of letting Postgres blow up (1 ms)
+    √ rejects a missing start_time (1 ms)
+    √ rejects a malformed start_time (not HH:mm)
+    √ rejects an out-of-range time (25:00)
+    √ rejects end_time equal to start_time (1 ms)
+    √ rejects end_time before start_time
+    √ maps a (session_date, start_time) unique violation to 409 DUPLICATE_SESSION (1 ms)
+    √ rejects an empty wod block instead of a NOT NULL crash on wod_blocks.format
+    √ rejects a movement with no movement_name instead of a NOT NULL crash on movements (1 ms)
+    √ accepts a well-formed payload
+  wodService.update - validation
+    √ rejects an invalid id
+    √ rejects start_time/end_time sent together with end before start (1 ms)
+    √ propagates NOT_FOUND when the model finds nothing to update
+  wodService.remove
+    √ rejects an invalid id before touching the model
+    √ throws NOT_FOUND when nothing was deleted (1 ms)
+  wodService.duplicate
+    √ copies the source session onto a new slot when overrides are given
+    √ 409s when duplicating onto the exact same slot (no overrides) (1 ms)
+    √ 404s when the source session does not exist
+  wodService.getToday
+    √ queries using the Europe/Paris calendar date, not the UTC one (1 ms)
+  wodService.getTvState
+    √ picks the session covering the current Europe/Paris time as "current" (1 ms)
+    √ has no current session between classes, but still finds the next one (1 ms)
+    √ returns nulls and an empty list on a day with no sessions
+
+PASS tests/scoreService.test.js
+  scoreService.getLeaderboard
+    √ ranks a FOR_TIME WOD ascending - the fastest time wins (1 ms)
+    √ ranks an AMRAP WOD descending - more reps wins (1 ms)
+    √ keeps RX/Scaled/Modified ranked separately from each other
+    √ gives tied results the same rank and skips the next one (1, 1, 3) (1 ms)
+    √ rejects scoring a session that has no WOD block
+  scoreService.recordScore - validation
+    √ rejects a category outside RX/Scaled/Modified (6 ms)
+    √ rejects a negative result_value
+    √ rejects a score for a deactivated athlete without writing it (1 ms)
+    √ rejects an athlete_id that does not exist
+
+PASS tests/errorHandler.test.js
+  errorHandler
+    √ formats an ApiError with its own status/code/message (1 ms)
+    √ falls back to a generic 500 for unexpected errors (1 ms)
+    √ turns a predictable Postgres NOT NULL violation into a 400, not a 500
+    √ turns a predictable Postgres invalid-date-format error into a 400, not a 500
+
+PASS tests/wodAssembler.test.js
+  movementsForPhase
+    √ filters by phase and sorts by order_index (1 ms)
+    √ returns an empty array when no movement matches the phase
+  assemble
+    √ nests warmup, skill_strength, and wod with their respective movements (1 ms)
+    √ nulls out skill_strength and wod when their rows are absent
+
+Test Suites: 6 passed, 6 total
+Tests:       56 passed, 56 total
+Snapshots:   0 total
+Time:        1.724 s, estimated 2 s

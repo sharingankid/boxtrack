@@ -8,6 +8,14 @@ async function getToday(req, res, next) {
   }
 }
 
+async function getTvState(req, res, next) {
+  try {
+    res.status(200).json(await wodService.getTvState());
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function getById(req, res, next) {
   try {
     res.status(200).json({ wod: await wodService.getById(req.params.id) });
@@ -52,4 +60,13 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { getToday, getById, list, create, update, remove };
+async function duplicate(req, res, next) {
+  try {
+    const wod = await wodService.duplicate(req.params.id, req.body || {}, req.user.id);
+    res.status(201).json({ wod });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = { getToday, getTvState, getById, list, create, update, remove, duplicate };

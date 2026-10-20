@@ -26,3 +26,27 @@ export const formatDate = (value, options = {}) => {
 }
 
 export const shortDate = (value) => formatDate(value, { weekday: 'short', month: 'short' })
+
+// Scoring convention matching backend/src/services/scoreService.js: a race
+// against the clock is "lower wins" and entered as MM:SS; everything else
+// (rounds+reps, kg) is "higher wins" and entered as a plain number.
+export const TIME_BASED_FORMATS = ['FOR_TIME', 'CHIPPER']
+export const isTimeBasedFormat = (format) => TIME_BASED_FORMATS.includes(format)
+
+const RESULT_UNITS = { AMRAP: 'reps', EMOM: 'reps', TABATA: 'reps', STRENGTH: 'kg' }
+
+export const clockToSeconds = (clock) => {
+  const parts = String(clock).split(':').map((part) => Number(part))
+  if (parts.some((part) => Number.isNaN(part))) return null
+  return parts.reduce((total, part) => total * 60 + part, 0)
+}
+
+export const secondsToClock = (totalSeconds) => {
+  const seconds = Math.max(0, Math.round(Number(totalSeconds) || 0))
+  const minutes = Math.floor(seconds / 60)
+  const remainder = String(seconds % 60).padStart(2, '0')
+  return `${minutes}:${remainder}`
+}
+
+export const formatResult = (format, value) =>
+  isTimeBasedFormat(format) ? secondsToClock(value) : `${value} ${RESULT_UNITS[format] || ''}`.trim()

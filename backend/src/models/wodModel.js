@@ -23,10 +23,11 @@ async function fetchFullWod(client, wodId) {
   );
 }
 
-// A date can have more than one session (different time slots), so this
-// returns an array - possibly empty, never null.
+// A date can have more than one session (different schedules), so this
+// returns an array - possibly empty, never null. Sorted by start_time so
+// callers (today's view, the TV "now/next" computation) can rely on order.
 async function findAllBySessionDate(sessionDate) {
-  const { rows } = await pool.query('SELECT id FROM wods WHERE session_date = $1 ORDER BY time_slot', [
+  const { rows } = await pool.query('SELECT id FROM wods WHERE session_date = $1 ORDER BY start_time', [
     sessionDate,
   ]);
   const wods = [];
@@ -54,14 +55,21 @@ async function listSummaries({ from, to }) {
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
   const { rows } = await pool.query(
-    `SELECT wods.id, wods.session_date, wods.time_slot, wod_blocks.format
+    `SELECT wods.id, wods.session_date, wods.start_time, wods.end_time, wods.title, wod_blocks.format
      FROM wods
      LEFT JOIN wod_blocks ON wod_blocks.wod_id = wods.id
      ${where}
-     ORDER BY wods.session_date DESC`,
+     ORDER BY wods.session_date DESC, wods.start_time`,
     values
   );
-  return rows;
+  return rows.map((row) => ({
+    id: row.id,
+    session_date: row.session_date,
+    start_time: row.start_time?.slice(0, 5),
+    end_time: row.end_time?.slice(0, 5),
+    title: row.title,
+    format: row.format,
+  }));
 }
 
 async function insertMovements(client, wodId, phase, movements = []) {
@@ -81,11 +89,13 @@ async function create(data, userId) {
     await client.query('BEGIN');
 
     const wodInsert = await client.query(
-      `INSERT INTO wods (session_date, time_slot, warmup_general, warmup_specific, created_by)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      `INSERT INTO wods (session_date, start_time, end_time, title, warmup_general, warmup_specific, created_by)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
       [
         data.session_date,
-        data.time_slot || null,
+        data.start_time,
+        data.end_time,
+        data.title || null,
         data.warmup?.general || null,
         data.warmup?.specific || null,
         userId,
@@ -137,9 +147,17 @@ async function update(id, data) {
       values.push(data.session_date);
       fields.push(`session_date = $${values.length}`);
     }
-    if (data.time_slot !== undefined) {
-      values.push(data.time_slot);
-      fields.push(`time_slot = $${values.length}`);
+    if (data.start_time !== undefined) {
+      values.push(data.start_time);
+      fields.push(`start_time = $${values.length}`);
+    }
+    if (data.end_time !== undefined) {
+      values.push(data.end_time);
+      fields.push(`end_time = $${values.length}`);
+    }
+    if (data.title !== undefined) {
+      values.push(data.title);
+      fields.push(`title = $${values.length}`);
     }
     if (data.warmup?.general !== undefined) {
       values.push(data.warmup.general);
@@ -154,7 +172,13 @@ async function update(id, data) {
     const setClause = fields.length ? `${fields.join(', ')}, updated_at = now()` : 'updated_at = now()';
     await client.query(`UPDATE wods SET ${setClause} WHERE id = $${values.length}`, values);
 
-    if (data.skill_strength) {
+    // `undefined` (key omitted) means "leave as-is", `null` means "this
+    // session doesn't have a Skill/Strength phase" (a coach going straight
+    // to the WOD) - the only case that needs the existing block removed.
+    if (data.skill_strength === null) {
+      await client.query('DELETE FROM skill_strength_blocks WHERE wod_id = $1', [id]);
+      await client.query("DELETE FROM movements WHERE wod_id = $1 AND phase = 'skill_strength'", [id]);
+    } else if (data.skill_strength) {
       await client.query(
         `INSERT INTO skill_strength_blocks (wod_id, kind, instructions) VALUES ($1, $2, $3)
          ON CONFLICT (wod_id) DO UPDATE SET kind = EXCLUDED.kind, instructions = EXCLUDED.instructions`,

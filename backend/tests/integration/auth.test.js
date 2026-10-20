@@ -40,7 +40,21 @@ describe('Auth', () => {
       .send({ email: TEST_COACH_EMAIL, password: TEST_PASSWORD });
     expect(res.status).toBe(200);
     expect(res.body.token).toEqual(expect.any(String));
-    expect(res.body.user).toEqual({ id: expect.any(Number), email: TEST_COACH_EMAIL });
+    expect(res.body.user).toEqual({ id: expect.any(Number), email: TEST_COACH_EMAIL, role: 'coach' });
+  });
+
+  it('matches the email case-insensitively and ignores surrounding spaces', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: `  ${TEST_COACH_EMAIL.toUpperCase()} `, password: TEST_PASSWORD });
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects a non-string email with 400 instead of crashing', async () => {
+    const res = await request(app)
+      .post('/api/auth/login')
+      .send({ email: { $ne: '' }, password: 'x' });
+    expect(res.status).toBe(400);
   });
 
   it('revokes the token on logout - it stops working immediately', async () => {
@@ -55,7 +69,7 @@ describe('Auth', () => {
     const reuseRes = await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: '2026-11-01', time_slot: '18:00' });
+      .send({ session_date: '2026-11-01', start_time: '18:00', end_time: '19:00' });
     expect(reuseRes.status).toBe(401);
     expect(reuseRes.body.error.code).toBe('UNAUTHENTICATED');
   });
