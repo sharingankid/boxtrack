@@ -1,0 +1,41 @@
+# Render Blueprint - one web service (API + built React app on the same
+# HTTPS URL) and one PostgreSQL database. Deploy: Render dashboard ->
+# New -> Blueprint -> pick this repository. Full walkthrough, including
+# creating Timothé's owner account: backend/README.md "Deploying on Render".
+
+services:
+  - type: web
+    name: boxtrack
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    # The front is built against a relative /api base: same origin as the
+    # API, so no CORS and no URL to keep in sync between two services.
+    buildCommand: >-
+      npm --prefix frontend ci &&
+      VITE_DATA_MODE=api VITE_API_BASE_URL=/api npm --prefix frontend run build &&
+      npm --prefix backend ci --omit=dev
+    # --if-empty: creates the schema on the first deploy, no-op afterwards.
+    startCommand: npm --prefix backend run db:setup -- --if-empty && npm --prefix backend start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: '22'
+      - key: NODE_ENV
+        value: production
+      - key: SERVE_FRONTEND
+        value: 'true'
+      - key: TRUST_PROXY
+        value: '1'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: boxtrack-db
+          property: connectionString
+
+databases:
+  - name: boxtrack-db
+    plan: free
+    region: frankfurt
+    databaseName: boxtrack
+    user: boxtrack

@@ -102,6 +102,8 @@ hosting provider's console), pass the password through the environment instead:
 | `DATABASE_SSL` | `true` for a hosted database that requires TLS (Render, Railway, Neon...). Leave empty locally. |
 | `FRONTEND_URL` | Production: the deployed front-end origin(s), comma-separated, to lock CORS. Leave unset in dev to allow any origin. |
 | `TRUST_PROXY` | Production behind a reverse proxy: number of proxy hops (`1` on Render/Railway), so the login rate limiter sees real client IPs instead of the proxy's. |
+| `SERVE_FRONTEND` | `true` to also serve the built React app (`frontend/dist`) from this server - one URL for the public view, `/coach`, `/screen` and `/api`. Requires `npm run build` in `frontend/` first (the server refuses to start otherwise). Leave unset in dev (Vite serves the front). |
+| `FRONTEND_DIST` | Optional override of the build folder served by `SERVE_FRONTEND` (defaults to `../frontend/dist`). |
 
 ## Running
 
@@ -121,6 +123,37 @@ the database pool before exiting.
 2. `npm ci --omit=dev && npm run db:setup` (schema only - no seed).
 3. `npm run user:create -- --email <owner email> --role owner` for Timothé's account.
 4. Set `FRONTEND_URL` and `TRUST_PROXY`, start with `npm start`, check `GET /health`.
+
+### Deploying on Render (recommended)
+
+The repository root has a [`render.yaml`](../render.yaml) Blueprint: **one** web service that
+builds the front-end (against a relative `/api`, so no CORS and no URL to configure) and serves it
+together with the API (`SERVE_FRONTEND=true`), plus one PostgreSQL database. HTTPS is provided by
+Render on the `*.onrender.com` URL (and on a custom domain such as `boxtrack.crossfit-lab.fr` if
+one is added).
+
+1. Render dashboard → **New → Blueprint** → select the GitHub repository. It deploys `main`.
+2. The start command runs `npm run db:setup -- --if-empty` first: the schema is created on the
+   first deploy, every later deploy leaves the database untouched.
+3. Create Timothé's account from your own machine, using the database's **External Database URL**
+   (Render dashboard → `boxtrack-db` → Connections) - the free plan has no shell:
+
+   ```bash
+   cd backend
+   DATABASE_URL='<External Database URL>' DATABASE_SSL=true \
+     npm run user:create -- --email timothe@crossfitlab.fr --role owner
+   ```
+
+   For a soutenance/demo database only, the same `DATABASE_URL=... DATABASE_SSL=true` prefix works
+   with `npm run db:setup -- --seed` **on a fresh, separate database** (it refuses to run on one
+   that already has the schema).
+4. Open `https://<service>.onrender.com/health` (`{"status":"ok"}`), then `/`, `/screen`, `/login`.
+
+Free-plan limits to know before the box relies on it: the service sleeps after 15 minutes without
+traffic (the first request then takes ~1 minute - the `/screen` TV polls every 30 s, so it stays
+awake while the TV is on), and a free Render database expires after 30 days. For real daily use,
+switch the web service to the Starter plan and/or point `DATABASE_URL` at a durable database
+(Render paid Postgres, or Neon's free tier with `DATABASE_SSL=true`).
 
 ## Lint & format
 
@@ -142,10 +175,11 @@ npm test               # unit tests - pure functions, no database needed
 npm run test:integration   # protected access, validation, persistence - needs a real database
 ```
 
-Unit tests (`tests/*.test.js`, 56 tests) cover pure logic: session assembly, schedule/role
+Unit tests (`tests/*.test.js`, 60 tests) cover pure logic: session assembly, schedule/role
 validation, the `/wods/tv-now` current/next/remaining selection (including Europe/Paris DST
 correctness), leaderboard ranking (including ties), score-entry rules, input validators (calendar
-dates, http(s)-only URLs, ids), token extraction, error formatting.
+dates, http(s)-only URLs, ids), token extraction, error formatting, and the single-service
+front-end serving (SPA fallback, cache headers, `/api` left alone).
 
 Integration tests (`tests/integration/`, 58 tests) run the real Express app with Supertest against
 a real Postgres database - they `TRUNCATE` every table before each test, so **never point them at
@@ -178,7 +212,8 @@ Optional-tier (athletes/scores/announcements/QR codes) endpoints not listed here
 
 | Method | Path | Auth | Returns |
 |---|---|---|---|
-| POST | `/api/auth/login` | Public | `{ token, user }` |
+| POST | `/api/auth/login` | Public | `{ token, user, expires_at }` |
+| GET | `/api/auth/me` | Authenticated | `{ user, expires_at }` - is a stored token still valid? |
 | POST | `/api/auth/logout` | Authenticated | `204` |
 | GET | `/api/wods/today` | Public | `{ wods: [...] }` - zero, one, or more, sorted by `start_time` |
 | GET | `/api/wods/tv-now` | Public | `{ reference_date, reference_time, timezone, current, next, remaining }` |

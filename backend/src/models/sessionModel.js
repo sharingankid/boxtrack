@@ -10,7 +10,8 @@ async function create({ userId, tokenHash, expiresAt }) {
 
 async function findValidByTokenHash(tokenHash) {
   const { rows } = await pool.query(
-    `SELECT sessions.user_id AS user_id, users.email AS email, users.role AS role
+    `SELECT sessions.user_id AS user_id, users.email AS email, users.role AS role,
+            sessions.expires_at AS expires_at
      FROM sessions
      JOIN users ON users.id = sessions.user_id
      WHERE sessions.token_hash = $1 AND sessions.expires_at > now()`,

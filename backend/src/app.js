@@ -4,6 +4,7 @@ const helmet = require('helmet');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
 const requestLogger = require('./middleware/requestLogger');
+const serveFrontend = require('./middleware/serveFrontend');
 
 const app = express();
 
@@ -15,9 +16,14 @@ if (process.env.TRUST_PROXY) {
   app.set('trust proxy', Number(process.env.TRUST_PROXY));
 }
 
-// Standard security headers (nosniff, frame-ancestors, HSTS...). The API
-// only serves JSON, so helmet's defaults need no tuning.
-app.use(helmet());
+// Standard security headers (nosniff, frame-ancestors, HSTS, CSP...). The
+// only tuning: images may come from any https origin, since athlete
+// photo_url points at an external host when the front is served from here.
+app.use(
+  helmet({
+    contentSecurityPolicy: { directives: { 'img-src': ["'self'", 'data:', 'https:'] } },
+  })
+);
 
 // Wide open in dev (no FRONTEND_URL set); locked to the deployed frontend
 // origin(s) in production via FRONTEND_URL - comma-separated if the front is
@@ -36,6 +42,10 @@ if (process.env.NODE_ENV !== 'test') {
 app.get('/health', (req, res) => res.status(200).json({ status: 'ok' }));
 
 app.use('/api', routes);
+
+if (process.env.SERVE_FRONTEND === 'true') {
+  app.use(serveFrontend());
+}
 
 app.use((req, res) => {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

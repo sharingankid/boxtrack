@@ -17,6 +17,11 @@ async function list({ activeOnly } = {}) {
   return rows.map(assemble);
 }
 
+async function findById(id) {
+  const { rows } = await pool.query('SELECT * FROM announcements WHERE id = $1', [id]);
+  return rows[0] ? assemble(rows[0]) : null;
+}
+
 async function create(data, userId) {
   const { rows } = await pool.query(
     `INSERT INTO announcements (title, body, created_by) VALUES ($1, $2, $3) RETURNING *`,
@@ -55,4 +60,4 @@ async function remove(id) {
   return rowCount > 0;
 }
 
-module.exports = { list, create, update, remove };
+module.exports = { list, findById, create, update, remove };
