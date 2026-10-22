@@ -2152,7 +2152,7 @@ progress::-webkit-progress-value {
   justify-content: space-between;
   gap: calc(1 * var(--tvw));
   /* Leaves room for the pixel runner above the track. */
-  margin-bottom: calc(1.9 * var(--tvw));
+  margin-bottom: calc(2.2 * var(--tvw));
 }
 .tv-timeline-labels strong {
   color: #ff9867;
@@ -3229,128 +3229,38 @@ progress::-webkit-progress-value {
 }
 
 /* A little arcade energy on the TV, with the workout always taking centre stage. */
-.arcade-clock {
-  padding: calc(0.4 * var(--tvh)) calc(0.6 * var(--tvw));
-  background: #171510;
-  border: 1px solid #655039;
-  border-radius: 5px;
-  box-shadow:
-    inset 0 0 15px #0009,
-    0 3px 0 #000;
-}
-.arcade-clock-label {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(0.5 * var(--tvw));
-  margin-bottom: calc(0.4 * var(--tvh));
-  color: #d8ac75;
-  font: 700 calc(0.5 * var(--tvw)) monospace;
-  letter-spacing: 0.15em;
-}
-.arcade-clock-label i {
-  display: inline-block;
-  width: calc(0.35 * var(--tvw));
-  height: calc(0.35 * var(--tvw));
-  background: #ff9254;
-  box-shadow: 0 0 8px #ff713988;
-  animation: arcade-blink 3s steps(1) infinite;
-}
-.arcade-digits {
-  display: flex;
-  align-items: center;
-  gap: calc(0.3 * var(--tvw));
-}
-.arcade-digit {
-  position: relative;
-  width: calc(1.55 * var(--tvw));
-  height: calc(2.8 * var(--tvw));
-}
-.segment {
-  position: absolute;
-  background: #ff9c6010;
-  border-radius: 1px;
-}
-.segment.lit {
-  background: #ffac69;
-  box-shadow: 0 0 6px #ff833960;
-}
-.segment-a,
-.segment-g,
-.segment-d {
-  left: calc(0.25 * var(--tvw));
-  right: calc(0.25 * var(--tvw));
-  height: calc(0.25 * var(--tvw));
-  clip-path: polygon(12% 0, 88% 0, 100% 50%, 88% 100%, 12% 100%, 0 50%);
-}
-.segment-a {
-  top: 0;
-}
-.segment-g {
-  top: calc(50% - 0.125 * var(--tvw));
-}
-.segment-d {
-  bottom: 0;
-}
-.segment-b,
-.segment-c,
-.segment-e,
-.segment-f {
-  width: calc(0.25 * var(--tvw));
-  height: 40%;
-  clip-path: polygon(50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%, 0 12%);
-}
-.segment-b {
-  top: calc(0.22 * var(--tvw));
-  right: 0;
-}
-.segment-c {
-  right: 0;
-  bottom: calc(0.22 * var(--tvw));
-}
-.segment-e {
-  bottom: calc(0.22 * var(--tvw));
-  left: 0;
-}
-.segment-f {
-  top: calc(0.22 * var(--tvw));
-  left: 0;
-}
-.arcade-colon {
-  color: #ffac69;
-  font: 700 calc(2.2 * var(--tvw)) monospace;
-  animation: arcade-blink 2s steps(1) infinite;
-}
+.flip-clock { padding: calc(.5 * var(--tvh)) calc(.65 * var(--tvw)); background: #111315; border: 1px solid #b88755; border-radius: 7px; box-shadow: inset 0 1px 0 #ffffff1a, 0 0 22px #ff8b401c, 0 5px 12px #0009; }
+.flip-digits { display: flex; align-items: center; gap: calc(.22 * var(--tvw)); }
+.flip-digit { position: relative; display: block; width: calc(2.35 * var(--tvw)); height: calc(3.7 * var(--tvw)); perspective: calc(18 * var(--tvw)); border-radius: 3px; box-shadow: 0 2px 3px #0009; font: 700 calc(3.55 * var(--tvw)) / calc(3.7 * var(--tvw)) 'Barlow Condensed', monospace; font-variant-numeric: tabular-nums; color: #fffaf1; }
+.flip-half { position: absolute; left: 0; width: 100%; height: 50%; overflow: hidden; backface-visibility: hidden; }
+.flip-half > span { position: absolute; left: 0; width: 100%; height: 200%; text-align: center; font: inherit; color: inherit; }
+.flip-top { top: 0; background: linear-gradient(#414449, #303237); border-radius: 3px 3px 0 0; border-bottom: 1px solid #111; transform-origin: bottom; }
+.flip-bottom { bottom: 0; background: linear-gradient(#282b2f, #383b40); border-radius: 0 0 3px 3px; border-top: 1px solid #111; transform-origin: top; }
+.flip-top > span { top: 0; }.flip-bottom > span { bottom: 0; }
+.flip-transition { position: absolute; inset: 0; transform-style: preserve-3d; }
+.flip-leaf-top { z-index: 2; animation: flap-close .32s ease-in forwards; }
+.flip-leaf-bottom { z-index: 3; transform: rotateX(90deg); animation: flap-open .34s .32s ease-out forwards; }
+.flip-hinge { position: absolute; top: calc(50% - 2px); width: 3px; height: 4px; background: #8b7d68; border-radius: 1px; z-index: 4; }
+.flip-hinge-left { left: -1px; }.flip-hinge-right { right: -1px; }
+.flip-colon { color: #ffb27e; font: 700 calc(2.1 * var(--tvw)) monospace; padding-inline: calc(.15 * var(--tvw)); animation: clock-tick 2s ease-in-out infinite; }
+@keyframes flap-close { to { transform: rotateX(-90deg); filter: brightness(.45); } }
+@keyframes flap-open { from { transform: rotateX(90deg); filter: brightness(.45); } to { transform: rotateX(0); filter: brightness(1); } }
 .tv-timeline-runner {
   position: absolute;
   bottom: 100%;
   transform: translateX(-50%);
   transition: left 1s linear;
 }
-.pixel-runner {
-  display: block;
-  width: calc(1.5 * var(--tvw));
-  height: calc(1.65 * var(--tvw));
-  overflow: visible;
-  filter: drop-shadow(0 0 4px #ff8b4033);
-}
-.runner-body {
-  animation: runner-bounce 0.32s steps(2) infinite;
-}
-.runner-leg {
-  transform-box: fill-box;
-  transform-origin: top center;
-}
-.runner-leg-front {
-  animation: runner-stride 0.32s steps(2) infinite;
-}
-.runner-leg-back {
-  animation: runner-stride 0.32s steps(2) infinite reverse;
-}
-.runner-arm {
-  transform-origin: 13px 10px;
-  animation: runner-arm 0.32s steps(2) infinite;
-}
+.pixel-runner { display: block; width: calc(1.9 * var(--tvw)); height: calc(1.9 * var(--tvw)); overflow: visible; filter: drop-shadow(0 0 3px #ff8b4022); }
+.runner-frame { opacity: 0; animation: runner-poses .72s steps(1, end) infinite; animation-delay: calc(var(--frame) * .06s - .72s); }
+.runner-shadow { transform-origin: 16px 30px; animation: runner-shadow .36s ease-in-out infinite; }
+.runner-dust { animation: runner-dust .36s ease-out infinite; }
+.runner-dust-two { animation-delay: -.18s; }
+.runner-ribbon { transform-origin: 15px 6px; animation: runner-ribbon .18s steps(2) infinite; }
+@keyframes runner-ribbon { 50% { transform: rotate(16deg); } }
+@keyframes runner-poses { 0% { opacity: 1; } 8.333333%, 100% { opacity: 0; } }
+@keyframes runner-shadow { 50% { transform: scaleX(.65); opacity: .18; } }
+@keyframes runner-dust { from { transform: translate(9px, 1px) scale(1); opacity: .65; } to { transform: translate(-4px, -2px) scale(.3); opacity: 0; } }
 .tv-timeline-finish {
   position: absolute;
   right: 0;
@@ -3365,26 +3275,26 @@ progress::-webkit-progress-value {
 .tv-wod-heading h2 {
   text-shadow: 2px 2px 0 #ff895f20;
 }
-@keyframes arcade-blink {
-  50% {
-    opacity: 0.35;
-  }
+@media (prefers-reduced-motion: reduce) {
+  .flip-transition, .runner-dust { display: none; }
+  .runner-frame { opacity: 0; }
+  .runner-frame:first-of-type { opacity: 1; }
 }
-@keyframes runner-bounce {
-  50% {
-    transform: translateY(-1px);
-  }
+
+/* Slow accents keep the clock and the progress track easy to spot from the floor. */
+.tv-date > .flip-clock { margin-block: calc(.4 * var(--tvh)); }
+.tv-timeline-fill { position: relative; overflow: hidden; }
+.tv-timeline-fill::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(110deg, transparent 35%, #fff5 50%, transparent 65%);
+  transform: translateX(-100%);
+  animation: track-sheen 5s ease-in-out infinite;
 }
-@keyframes runner-stride {
-  0% {
-    transform: rotate(-25deg);
-  }
-  50% {
-    transform: rotate(30deg);
-  }
-}
-@keyframes runner-arm {
-  50% {
-    transform: rotate(-18deg);
-  }
-}
+.session-transition > .tv-wod { animation: tv-card-arrive .65s ease-out both; }
+.session-transition .tv-warmup { animation: tv-card-arrive .65s .1s ease-out both; }
+.session-transition .tv-strength { animation: tv-card-arrive .65s .2s ease-out both; }
+@keyframes clock-tick { 50% { opacity: .55; } }
+@keyframes track-sheen { 0%, 35% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
+@keyframes tv-card-arrive { from { opacity: 0; transform: translateY(calc(.7 * var(--tvh))); } to { opacity: 1; transform: translateY(0); } }

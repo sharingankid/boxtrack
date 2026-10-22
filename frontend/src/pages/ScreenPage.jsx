@@ -72,13 +72,16 @@ function Movements({ items = [] }) {
 }
 
 function slotProgress(session, now, current) {
-  if (!current) return 0
+  if (session.session_date !== now.date) return 0
   const start = minutes(session.start_time)
   const end = minutes(session.end_time)
-  if (start === null || end === null || end <= start) return 0
+  if (start === null || (current && (end === null || end <= start))) return 0
+  const origin = current ? start * 60 : 0
+  const target = (current ? end : start) * 60
+  if (target <= origin) return 0
   return Math.max(
     0,
-    Math.min(100, ((now.seconds / 60 - start) / (end - start)) * 100),
+    Math.min(100, ((now.seconds - origin) / (target - origin)) * 100),
   )
 }
 
