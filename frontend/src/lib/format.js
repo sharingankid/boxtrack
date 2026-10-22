@@ -21,11 +21,15 @@ export const formatDate = (value, options = {}) => {
   const date = new Date(`${value}T12:00:00`)
   if (Number.isNaN(date.getTime())) return ''
   return new Intl.DateTimeFormat('fr-FR', {
-    weekday: 'long', day: 'numeric', month: 'long', ...options,
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    ...options,
   }).format(date)
 }
 
-export const shortDate = (value) => formatDate(value, { weekday: 'short', month: 'short' })
+export const shortDate = (value) =>
+  formatDate(value, { weekday: 'short', month: 'short' })
 
 // Scoring convention matching backend/src/services/scoreService.js: a race
 // against the clock is "lower wins" and entered as MM:SS; everything else
@@ -33,10 +37,17 @@ export const shortDate = (value) => formatDate(value, { weekday: 'short', month:
 export const TIME_BASED_FORMATS = ['FOR_TIME', 'CHIPPER']
 export const isTimeBasedFormat = (format) => TIME_BASED_FORMATS.includes(format)
 
-const RESULT_UNITS = { AMRAP: 'reps', EMOM: 'reps', TABATA: 'reps', STRENGTH: 'kg' }
+const RESULT_UNITS = {
+  AMRAP: 'reps',
+  EMOM: 'reps',
+  TABATA: 'reps',
+  STRENGTH: 'kg',
+}
 
 export const clockToSeconds = (clock) => {
-  const parts = String(clock).split(':').map((part) => Number(part))
+  const parts = String(clock)
+    .split(':')
+    .map((part) => Number(part))
   if (parts.some((part) => Number.isNaN(part))) return null
   return parts.reduce((total, part) => total * 60 + part, 0)
 }
@@ -49,4 +60,12 @@ export const secondsToClock = (totalSeconds) => {
 }
 
 export const formatResult = (format, value) =>
-  isTimeBasedFormat(format) ? secondsToClock(value) : `${value} ${RESULT_UNITS[format] || ''}`.trim()
+  isTimeBasedFormat(format)
+    ? secondsToClock(value)
+    : `${value} ${RESULT_UNITS[format] || ''}`.trim()
+
+// TV display: coach shorthand dashes become plain punctuation. Bullets at line
+// start are dropped and spaced dashes become commas; hyphens inside words or
+// rep schemes (Toes-to-Bar, 21-15-9) are kept.
+export const withoutDashes = (value) =>
+  value?.replace(/^[ \t]*[-–—][ \t]+/gm, '').replace(/[ \t]+[-–—][ \t]+/g, ', ')

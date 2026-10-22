@@ -1,25 +1,171 @@
 import { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
-import DemoBanner from '../components/DemoBanner.jsx'
-import ThemeToggle from '../components/ThemeToggle.jsx'
+import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../state/AuthContext.jsx'
-
+import DemoBanner from '../components/DemoBanner.jsx'
+import Icon from '../components/Icon.jsx'
 export default function LoginPage() {
-  const { session, login, mode } = useAuth()
+  const { session, login, mode, reason } = useAuth()
+  const location = useLocation()
   const navigate = useNavigate()
-  const [form, setForm] = useState({ email: '', password: '' })
+  const destination = /^\/coach(?:\/|$)/.test(location.state?.from || '')
+    ? location.state.from
+    : '/coach'
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
-  const [loading, setLoading] = useState(false)
-  if (session) return <Navigate to="/admin/sessions/new" replace />
+  const [busy, setBusy] = useState(false)
+  if (session) return <Navigate to={destination} replace />
   const submit = async (event) => {
-    event.preventDefault(); setLoading(true); setError('')
-    try { await login(form); navigate('/admin/sessions/new') } catch (err) { setError(err.message) } finally { setLoading(false) }
+    event.preventDefault()
+    setBusy(true)
+    setError('')
+    try {
+      await login({ email, password })
+      navigate(destination, { replace: true })
+    } catch (err) {
+      setError(
+        err.status === 401 ? 'Email ou mot de passe incorrect.' : err.message,
+      )
+    } finally {
+      setBusy(false)
+    }
   }
   return (
-    <section className="login-page">
-      <ThemeToggle className="login-theme-toggle" />
-      <div className="login-panel"><div className="brand large"><span className="brand-mark">BT</span><span><strong>BOXTRACK</strong><small>CROSSFIT LAB</small></span></div><p className="eyebrow">Espace réservé</p><h1>Espace coach</h1><p>Publiez et modifiez les entraînements de la box.</p></div>
-      <div className="login-form-wrap"><DemoBanner /><form className="login-form" onSubmit={submit}><p className="eyebrow">Connexion</p><h2>Accéder à l’éditeur</h2>{mode === 'demo' && <p className="notice">Aucun contrôle d’identité n’est effectué ici. Ce bouton ouvre seulement l’aperçu de l’éditeur local.</p>}{error && <p className="form-error" role="alert">{error}</p>}<label>Email<input type="email" required autoComplete="username" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} placeholder="coach@crossfitlab.fr" /></label><label>Mot de passe<input type="password" required={mode === 'api'} autoComplete="current-password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="••••••••••••" /></label><button className="button primary wide" disabled={loading}>{loading ? 'Connexion…' : mode === 'demo' ? 'Prévisualiser l’éditeur' : 'Se connecter'}</button></form></div>
-    </section>
+    <main className="login-page">
+      <section className="login-panel">
+        <div className="brand">
+          <span className="brand-mark">
+            <Icon name="barbell" />
+          </span>
+          <span>
+            <strong>
+              BOXTRACK<span className="brand-dot">.</span>
+            </strong>
+            <small>LA PROGRAMMATION CROSSFIT</small>
+          </span>
+        </div>
+        <div className="login-art">
+          <p className="eyebrow">CROSSFIT LAB / COACH & STAFF</p>
+          <h1>
+            PRÉPAREZ
+            <br />
+            LA PROCHAINE
+            <br />
+            <span>SÉANCE.</span>
+          </h1>
+          <p>De votre programmation à l’écran de la salle.</p>
+          <div className="training-track" aria-hidden="true">
+            <span>WARM-UP</span>
+            <i />
+            <span>STRENGTH</span>
+            <i />
+            <span>WOD</span>
+          </div>
+        </div>
+        <div className="login-signature">
+          <span>CROSSFIT LAB</span>
+          <span>
+            PROGRAMMER
+            <br />
+            TRANSMETTRE
+          </span>
+        </div>
+        <svg
+          className="login-barbell"
+          viewBox="0 0 420 200"
+          fill="none"
+          aria-hidden="true"
+        >
+          <path
+            d="M0 100h420M55 30v140M85 10v180M335 10v180M365 30v140"
+            stroke="currentColor"
+            strokeWidth="16"
+          />
+          <path d="M0 180h420M0 20h420" stroke="currentColor" />
+        </svg>
+      </section>
+      <section className="login-form-wrap">
+        <DemoBanner />
+        <form onSubmit={submit} className="login-form">
+          <div className="login-access">
+            <Icon name="lock" />
+            <span>ACCÈS À VOTRE BOX</span>
+          </div>
+          <h2>
+            Prêt pour <br />
+            la séance ?
+          </h2>
+          <p className="muted">Connectez-vous à votre espace coach.</p>
+          {reason && (
+            <p className="notice" role="status">
+              {reason}
+            </p>
+          )}
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+          <fieldset disabled={busy}>
+            <label>
+              Email
+              <input
+                type="email"
+                required
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="coach@crossfitlab.fr"
+              />
+            </label>
+            <label htmlFor="password">Mot de passe</label>
+            <div className="password-field">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                required={mode === 'api'}
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Votre mot de passe"
+              />
+              <button
+                type="button"
+                aria-label={
+                  showPassword
+                    ? 'Masquer le mot de passe'
+                    : 'Afficher le mot de passe'
+                }
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword(!showPassword)}
+              >
+                <Icon name="eye" />
+              </button>
+            </div>
+            <button className="button primary wide" aria-busy={busy}>
+              {busy ? (
+                <>
+                  <span className="loading-spinner" />
+                  Connexion…
+                </>
+              ) : (
+                <>
+                  {mode === 'demo' ? 'Ouvrir la démonstration' : 'Se connecter'}
+                  <Icon name="arrow" />
+                </>
+              )}
+            </button>
+          </fieldset>
+          <p className="login-session-note">
+            <Icon name="lock" />
+            Votre session reste ouverte pendant 7 jours sur cet appareil.
+          </p>
+        </form>
+        <p className="login-form-footer">
+          BOXTRACK <span>/</span> CROSSFIT LAB
+        </p>
+      </section>
+    </main>
   )
 }
