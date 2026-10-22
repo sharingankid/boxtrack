@@ -2151,7 +2151,8 @@ progress::-webkit-progress-value {
   display: flex;
   justify-content: space-between;
   gap: calc(1 * var(--tvw));
-  margin-bottom: calc(0.7 * var(--tvh));
+  /* Leaves room for the pixel runner above the track. */
+  margin-bottom: calc(1.9 * var(--tvw));
 }
 .tv-timeline-labels strong {
   color: #ff9867;
@@ -2159,16 +2160,20 @@ progress::-webkit-progress-value {
 .tv-timeline-labels span {
   font-variant-numeric: tabular-nums;
 }
+.tv-timeline-labels b {
+  color: #ffac69;
+}
 .tv-timeline-track {
-  width: 100%;
+  position: relative;
   height: calc(0.6 * var(--tvh));
-  overflow: hidden;
+  margin-inline: calc(0.8 * var(--tvw));
   background: #3c4040;
 }
-.tv-timeline-track > span {
+.tv-timeline-fill {
   display: block;
   height: 100%;
-  background: var(--tv-orange);
+  background: linear-gradient(90deg, #b64b22, var(--tv-orange));
+  box-shadow: 0 0 12px #ff713944;
   transition: width 1s linear;
 }
 .tv-next-slot {
@@ -3220,5 +3225,166 @@ progress::-webkit-progress-value {
   }
   .tv-standby .tv-standby-content aside > span {
     font-size: 0.65rem;
+  }
+}
+
+/* A little arcade energy on the TV, with the workout always taking centre stage. */
+.arcade-clock {
+  padding: calc(0.4 * var(--tvh)) calc(0.6 * var(--tvw));
+  background: #171510;
+  border: 1px solid #655039;
+  border-radius: 5px;
+  box-shadow:
+    inset 0 0 15px #0009,
+    0 3px 0 #000;
+}
+.arcade-clock-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(0.5 * var(--tvw));
+  margin-bottom: calc(0.4 * var(--tvh));
+  color: #d8ac75;
+  font: 700 calc(0.5 * var(--tvw)) monospace;
+  letter-spacing: 0.15em;
+}
+.arcade-clock-label i {
+  display: inline-block;
+  width: calc(0.35 * var(--tvw));
+  height: calc(0.35 * var(--tvw));
+  background: #ff9254;
+  box-shadow: 0 0 8px #ff713988;
+  animation: arcade-blink 3s steps(1) infinite;
+}
+.arcade-digits {
+  display: flex;
+  align-items: center;
+  gap: calc(0.3 * var(--tvw));
+}
+.arcade-digit {
+  position: relative;
+  width: calc(1.55 * var(--tvw));
+  height: calc(2.8 * var(--tvw));
+}
+.segment {
+  position: absolute;
+  background: #ff9c6010;
+  border-radius: 1px;
+}
+.segment.lit {
+  background: #ffac69;
+  box-shadow: 0 0 6px #ff833960;
+}
+.segment-a,
+.segment-g,
+.segment-d {
+  left: calc(0.25 * var(--tvw));
+  right: calc(0.25 * var(--tvw));
+  height: calc(0.25 * var(--tvw));
+  clip-path: polygon(12% 0, 88% 0, 100% 50%, 88% 100%, 12% 100%, 0 50%);
+}
+.segment-a {
+  top: 0;
+}
+.segment-g {
+  top: calc(50% - 0.125 * var(--tvw));
+}
+.segment-d {
+  bottom: 0;
+}
+.segment-b,
+.segment-c,
+.segment-e,
+.segment-f {
+  width: calc(0.25 * var(--tvw));
+  height: 40%;
+  clip-path: polygon(50% 0, 100% 12%, 100% 88%, 50% 100%, 0 88%, 0 12%);
+}
+.segment-b {
+  top: calc(0.22 * var(--tvw));
+  right: 0;
+}
+.segment-c {
+  right: 0;
+  bottom: calc(0.22 * var(--tvw));
+}
+.segment-e {
+  bottom: calc(0.22 * var(--tvw));
+  left: 0;
+}
+.segment-f {
+  top: calc(0.22 * var(--tvw));
+  left: 0;
+}
+.arcade-colon {
+  color: #ffac69;
+  font: 700 calc(2.2 * var(--tvw)) monospace;
+  animation: arcade-blink 2s steps(1) infinite;
+}
+.tv-timeline-runner {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  transition: left 1s linear;
+}
+.pixel-runner {
+  display: block;
+  width: calc(1.5 * var(--tvw));
+  height: calc(1.65 * var(--tvw));
+  overflow: visible;
+  filter: drop-shadow(0 0 4px #ff8b4033);
+}
+.runner-body {
+  animation: runner-bounce 0.32s steps(2) infinite;
+}
+.runner-leg {
+  transform-box: fill-box;
+  transform-origin: top center;
+}
+.runner-leg-front {
+  animation: runner-stride 0.32s steps(2) infinite;
+}
+.runner-leg-back {
+  animation: runner-stride 0.32s steps(2) infinite reverse;
+}
+.runner-arm {
+  transform-origin: 13px 10px;
+  animation: runner-arm 0.32s steps(2) infinite;
+}
+.tv-timeline-finish {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  width: calc(0.5 * var(--tvw));
+  height: calc(1 * var(--tvw));
+  border-left: 2px solid #d7ccb7;
+  background: repeating-conic-gradient(#d7ccb7 0% 25%, #27241f 0% 50%) 0 0 /
+    calc(0.35 * var(--tvw)) calc(0.35 * var(--tvw));
+}
+.tv-phase-heading h2,
+.tv-wod-heading h2 {
+  text-shadow: 2px 2px 0 #ff895f20;
+}
+@keyframes arcade-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+@keyframes runner-bounce {
+  50% {
+    transform: translateY(-1px);
+  }
+}
+@keyframes runner-stride {
+  0% {
+    transform: rotate(-25deg);
+  }
+  50% {
+    transform: rotate(30deg);
+  }
+}
+@keyframes runner-arm {
+  50% {
+    transform: rotate(-18deg);
   }
 }

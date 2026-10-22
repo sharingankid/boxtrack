@@ -1,9 +1,15 @@
 import { apiClient } from '../services/apiClient.js'
 import useClock from '../hooks/useClock.js'
-import { minutes, selectSchedule, slotLabel } from '../lib/schedule.js'
+import {
+  minutes,
+  selectSchedule,
+  slotCountdown,
+  slotLabel,
+} from '../lib/schedule.js'
 import { movementDetail } from '../services/sessionAdapter.js'
 import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import DemoBanner from '../components/DemoBanner.jsx'
+import { ArcadeClock, PixelRunner } from '../components/TvArcade.jsx'
 import { FORMAT_LABELS, formatDate, withoutDashes } from '../lib/format.js'
 import { FORMAT_CUES } from '../lib/training.js'
 import { useSessions } from '../state/SessionsContext.jsx'
@@ -91,7 +97,7 @@ function TvStandby({ now, title, message, status }) {
         </div>
         <div className="tv-date">
           <span>{formatDate(now.date)}</span>
-          <strong aria-label="Heure actuelle">{now.time}</strong>
+          <ArcadeClock now={now} />
           <small>EUROPE / PARIS</small>
         </div>
       </header>
@@ -165,9 +171,13 @@ export function TvProgramme({
         </div>
         <div className="tv-date">
           <span>{formatDate(preview ? session.session_date : now.date)}</span>
-          <strong aria-label={preview ? 'Heure prévue' : 'Heure actuelle'}>
-            {preview ? session.start_time || '--:--' : now.time}
-          </strong>
+          {preview ? (
+            <strong aria-label="Heure prévue">
+              {session.start_time || '--:--'}
+            </strong>
+          ) : (
+            <ArcadeClock now={now} />
+          )}
           <small>EUROPE / PARIS</small>
         </div>
       </header>
@@ -252,7 +262,12 @@ export function TvProgramme({
                   ? 'SÉANCE EN COURS'
                   : 'PROCHAIN CRÉNEAU'}
             </strong>
-            <span>{slotLabel(session)}</span>
+            <span>
+              {slotLabel(session)}
+              {!preview && slotCountdown(session, now, current) && (
+                <b> · {slotCountdown(session, now, current)}</b>
+              )}
+            </span>
           </div>
           <div
             className="tv-timeline-track"
@@ -263,8 +278,16 @@ export function TvProgramme({
             aria-valuenow={Math.round(slotProgress(session, now, current))}
           >
             <span
+              className="tv-timeline-fill"
               style={{ width: `${slotProgress(session, now, current)}%` }}
             />
+            <span
+              className="tv-timeline-runner"
+              style={{ left: `${slotProgress(session, now, current)}%` }}
+            >
+              <PixelRunner />
+            </span>
+            <span className="tv-timeline-finish" aria-hidden="true" />
           </div>
         </div>
         <span className="tv-next-slot">
