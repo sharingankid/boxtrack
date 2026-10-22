@@ -1,15 +1,42 @@
-import { Navigate, Route, Routes } from 'react-router-dom'
-import Layout from './components/Layout.jsx'
+import {
+  createBrowserRouter,
+  createRoutesFromElements,
+  Navigate,
+  Route,
+  RouterProvider,
+} from 'react-router-dom'
+import CoachLayout from './components/CoachLayout.jsx'
+import DashboardPage from './pages/DashboardPage.jsx'
 import EditorPage from './pages/EditorPage.jsx'
-import HistoryPage from './pages/HistoryPage.jsx'
-import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import ScreenPage from './pages/ScreenPage.jsx'
-import SessionPage from './pages/SessionPage.jsx'
-import ThemeToggle from './components/ThemeToggle.jsx'
-
-const AdminEditor = () => <><ThemeToggle className="admin-theme-toggle" /><EditorPage /></>
-
+import { useAuth } from './state/AuthContext.jsx'
+function Entry() {
+  const { session } = useAuth()
+  return (
+    <Navigate
+      to={session && session.expiresAt > Date.now() ? '/coach' : '/login'}
+      replace
+    />
+  )
+}
+const router = createBrowserRouter(
+  createRoutesFromElements(
+    <>
+      <Route path="/" element={<Entry />} />
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/screen" element={<ScreenPage />} />
+      <Route path="/coach" element={<CoachLayout />}>
+        <Route index element={<DashboardPage />} />
+        <Route path="sessions" element={<DashboardPage />} />
+        <Route path="sessions/new" element={<EditorPage />} />
+        <Route path="sessions/:id/edit" element={<EditorPage />} />
+        <Route path="*" element={<Navigate to="/coach" replace />} />
+      </Route>
+      <Route path="*" element={<Entry />} />
+    </>,
+  ),
+)
 export default function App() {
-  return <Routes><Route element={<Layout />}><Route index element={<HomePage />} /><Route path="history" element={<HistoryPage />} /><Route path="sessions/:id" element={<SessionPage />} /><Route path="login" element={<LoginPage />} /></Route><Route path="screen" element={<ScreenPage />} /><Route path="admin/sessions/new" element={<AdminEditor />} /><Route path="admin/sessions/:id/edit" element={<AdminEditor />} /><Route path="*" element={<Navigate to="/" replace />} /></Routes>
+  return <RouterProvider router={router} />
 }

@@ -1,61 +1,90 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react'
-import { cloneDemoSessions } from '../data/demoSessions.js'
-import { apiClient } from '../services/apiClient.js'
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { createSessionAdapter } from '../services/sessionAdapter.js'
 import { useAuth } from './AuthContext.jsx'
 
 const SessionsContext = createContext(null)
-const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
-
 export function SessionsProvider({ children }) {
-  const { mode, session: auth } = useAuth()
+  const { mode, requireSession, session } = useAuth()
+  const adapter = useMemo(() => createSessionAdapter(mode), [mode])
   const [sessions, setSessions] = useState([])
-  const sessionsRef = useRef(sessions)
-  sessionsRef.current = sessions
   const [status, setStatus] = useState('loading')
   const [error, setError] = useState('')
-
-  const refresh = useCallback(async ({ silent = false } = {}) => {
-    if (!silent) setStatus('loading')
+  const requestVersion = useRef(0)
+  const invalidate = useCallback(() => {
+    requestVersion.current++
+  }, [])
+  const refresh = useCallback(
+    async ({ silent = false } = {}) => {
+      if (
+        !session &&
+        (mode === 'api' || window.location.pathname !== '/screen')
+      )
+        return
+      const version = ++requestVersion.current
+      if (!silent) setStatus('loading')
+      try {
+        const data = await adapter.list()
+        if (version !== requestVersion.current) return
+        setSessions(data)
+        setStatus('ready')
+        setError('')
+      } catch {
+        if (version !== requestVersion.current) return
+        setError('Connexion indisponible. Vérifiez le réseau puis réessayez.')
+        setStatus('error')
+      }
+    },
+    [adapter, session, mode],
+  )
+  useEffect(() => {
+    refresh()
+    const onStorage = () => refresh({ silent: true })
+    window.addEventListener('storage', onStorage)
+    return () => {
+      invalidate()
+      window.removeEventListener('storage', onStorage)
+    }
+  }, [refresh, invalidate])
+  const getSession = useCallback((id) => adapter.detail(id), [adapter])
+  const saveSession = async (form, id) => {
+    const saved = await adapter.save(form, id, requireSession())
+    requestVersion.current++
+    setSessions((current) => [
+      ...current.filter((s) => String(s.id) !== String(saved.id)),
+      saved,
+    ])
+    setStatus('ready')
     setError('')
-    try {
-      // The history endpoint returns summaries; all display/editor consumers
-      // need the nested session, including both Warm-Up fields.
-      const data = mode === 'demo'
-        ? (sessionsRef.current.length ? sessionsRef.current : (await wait(320), cloneDemoSessions()))
-        : await apiClient.history().then((items) => Promise.all(items.map((item) => apiClient.detail(item.id))))
-      setSessions(data)
-      setStatus('ready')
-    } catch (err) {
-      setError(err.message)
-      setStatus('error')
-    }
-  }, [mode])
-
-  useEffect(() => { refresh() }, [refresh])
-
-  const getSession = useCallback(async (id) => {
-    const found = sessionsRef.current.find((item) => String(item.id) === String(id))
-    if (mode === 'demo' && found) return found
-    if (mode === 'demo') return cloneDemoSessions().find((item) => String(item.id) === String(id))
-    return apiClient.detail(id)
-  }, [mode])
-
-  const saveSession = async (payload, id) => {
-    if (mode === 'demo') {
-      const saved = { ...payload, id: id ? Number(id) : Date.now() }
-      setSessions((current) => id
-        ? current.map((item) => String(item.id) === String(id) ? saved : item)
-        : [saved, ...current])
-      return saved
-    }
-    const saved = id
-      ? await apiClient.update(id, payload, auth.token)
-      : await apiClient.create(payload, auth.token)
-    await refresh()
     return saved
   }
-
-  return <SessionsContext.Provider value={{ sessions, status, error, refresh, getSession, saveSession, mode }}>{children}</SessionsContext.Provider>
+  const deleteSession = async (id) => {
+    await adapter.remove(id, requireSession())
+    requestVersion.current++
+    setSessions((current) => current.filter((s) => String(s.id) !== String(id)))
+  }
+  return (
+    <SessionsContext.Provider
+      value={{
+        sessions,
+        status,
+        error,
+        refresh,
+        getSession,
+        saveSession,
+        deleteSession,
+        mode,
+      }}
+    >
+      {children}
+    </SessionsContext.Provider>
+  )
 }
-
 export const useSessions = () => useContext(SessionsContext)
