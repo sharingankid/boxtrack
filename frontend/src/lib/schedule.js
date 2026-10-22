@@ -26,6 +26,21 @@ export function minutes(time) {
   if (!/^([01]\d|2[0-3]):[0-5]\d$/.test(time || '')) return null
   return Number(time.slice(0, 2)) * 60 + Number(time.slice(3))
 }
+// Minutes left in the current slot, or until today's next slot starts.
+export function slotCountdown(session, now, current) {
+  const start = minutes(session.start_time)
+  const end = minutes(session.end_time)
+  const valid =
+    session.session_date === now.date &&
+    start !== null &&
+    (!current || (end !== null && end > start))
+  if (!valid) return ''
+  const target = (current ? end : start) * 60
+  const remaining = Math.max(0, Math.ceil((target - now.seconds) / 60))
+  if (remaining === 0) return 'GO !'
+  const hours = Math.floor(remaining / 60)
+  return `${hours ? `${hours} h ` : ''}${remaining % 60} min ${current ? 'restantes' : 'avant le départ'}`
+}
 export function sessionState(session, now = parisNow()) {
   if (session.session_date < now.date) return 'past'
   if (session.session_date > now.date) return 'upcoming'
