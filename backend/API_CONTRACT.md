@@ -32,11 +32,17 @@ Email + password login, bcrypt-hashed passwords, a real session table (not a sta
 `logout` revokes a token immediately instead of waiting for it to expire. See
 `backend/src/services/authService.js`.
 
-- **Login**: `POST /auth/login` with `{ email, password }` → `{ token, user }`. The token is valid
-  **7 days** from login; there is no refresh endpoint, the user logs in again after that. Store it
+- **Login**: `POST /auth/login` with `{ email, password }` →
+  `{ token, user: { id, email, role }, expires_at }`. The token is valid **7 days** from login
+  (`expires_at`, ISO 8601 - use it rather than recomputing the expiry client-side); there is no
+  refresh endpoint, the user logs in again after that. Store it
   however suits the front-end (the current reference client uses `localStorage`, so the coach stays
   logged in across tab/browser restarts, not just for one tab session) and send it back as
   `Authorization: Bearer <token>` on every admin call.
+- **Current session**: `GET /auth/me` with the token in the header →
+  `{ user: { id, email, role }, expires_at }`, or `401 UNAUTHENTICATED` if the token was revoked
+  (logout on another device, password reset) or has expired. Call it when the app restores a token
+  from storage, so the coach isn't shown the admin until their first save fails.
 - **Logout**: `POST /auth/logout` with the token in the header, `204` - the token is deleted
   server-side, it stops working immediately, not just "expired".
 - **Roles**: `users.role` is one of `owner`, `coach`, `staff` (`coach` is the default for new
@@ -329,6 +335,10 @@ optional but must be an `http(s)` URL when sent; `active` must be a real JSON bo
 `{ id, title, body, active, created_at, updated_at }`, newest first. `title` required;
 `active: false` (a JSON boolean) unpublishes without deleting.
 
+`GET /announcements/:id` (public) is the shareable link to one announcement
+(`{ "announcement": {...} }`). An unpublished announcement is `404 NOT_FOUND`, exactly like one
+that doesn't exist, so a link shared earlier stops showing it as soon as the coach pulls it down.
+
 ### QR codes - `GET /qrcodes` (public), `POST/PUT/DELETE /admin/qrcodes[/:id]` (authenticated)
 
 `{ id, label, url, order_index, created_at }`, sorted by `order_index`. Generated client-side from
@@ -339,6 +349,11 @@ optional but must be an `http(s)` URL when sent; `active` must be a real JSON bo
 ---
 
 ## Changelog - breaking changes from the previous version of this contract
+
+**Deployment and session additions (October 2026).** Additive only, nothing existing changed shape:
+- `POST /auth/login` also returns `expires_at`.
+- New `GET /auth/me` (validate a stored token).
+- New public `GET /announcements/:id` (shareable link).
 
 **Validation hardening (October 2026).** Front-end impact, if any, is a `400` where the previous
 version accepted bad data:

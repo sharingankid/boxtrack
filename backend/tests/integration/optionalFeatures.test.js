@@ -180,6 +180,23 @@ describe('Optional tier (cahier des charges §5-6)', () => {
       const res = await request(app).post('/api/admin/announcements').set(auth()).send({ body: 'no title' });
       expect(res.status).toBe(400);
     });
+
+    it('serves one active announcement on its shareable public link, 404 once unpublished', async () => {
+      const created = await request(app)
+        .post('/api/admin/announcements')
+        .set(auth())
+        .send({ title: 'Fermeture exceptionnelle le 1er novembre' });
+      const { id } = created.body.announcement;
+
+      const shared = await request(app).get(`/api/announcements/${id}`);
+      expect(shared.status).toBe(200);
+      expect(shared.body.announcement.title).toBe('Fermeture exceptionnelle le 1er novembre');
+
+      await request(app).put(`/api/admin/announcements/${id}`).set(auth()).send({ active: false });
+      expect((await request(app).get(`/api/announcements/${id}`)).status).toBe(404);
+      expect((await request(app).get('/api/announcements/999')).status).toBe(404);
+      expect((await request(app).get('/api/announcements/abc')).status).toBe(400);
+    });
   });
 
   describe('QR codes', () => {

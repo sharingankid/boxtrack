@@ -6,6 +6,18 @@ async function listPublic() {
   return announcementModel.list({ activeOnly: true });
 }
 
+// The shareable link to one announcement (cahier des charges §6: "partagé
+// en lien"). An unpublished one is a 404 - same as one that never existed,
+// so a link shared before it was pulled down doesn't keep showing it.
+async function getPublic(id) {
+  assertValidId(id);
+  const announcement = await announcementModel.findById(id);
+  if (!announcement || !announcement.active) {
+    throw new ApiError(404, 'NOT_FOUND', 'Announcement not found');
+  }
+  return announcement;
+}
+
 async function listAll() {
   return announcementModel.list({ activeOnly: false });
 }
@@ -42,4 +54,4 @@ async function remove(id) {
   }
 }
 
-module.exports = { listPublic, listAll, create, update, remove };
+module.exports = { listPublic, getPublic, listAll, create, update, remove };
