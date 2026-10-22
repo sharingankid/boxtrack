@@ -212,13 +212,6 @@ Per the official cahier des charges, V1 scope is split into a **Core** tier that
 - QR Codes screen (owner manages labeled QR codes to community links, public + TV-ready display).
 - Coach dashboard (today's session, quick actions) - supports the <5-minute creation goal but isn't itself a CDC line item.
 
-**Sponsor-approved addition, beyond the CDC (confirmed 2026-10-05):**
-- A Recipes ("cuisine") section: Timothé Garde wants a healthy/fit recipe collection members can
-  cook at home. The coach curates recipes (search via the Spoonacular API, pick one to save, or
-  enter one manually), everyone else browses the saved collection with no login required. Runs as
-  its own track in parallel with Core V1, not a reprioritization of the CDC's own Optional tier
-  above - see `backend/API_CONTRACT.md` for the full data model and endpoints.
-
 **Out-of-scope (MVP):**
 - Native mobile app (iOS/Android) - web-responsive only.
 - Athlete self-service accounts / self-registration.

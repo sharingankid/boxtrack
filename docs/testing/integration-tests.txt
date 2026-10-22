@@ -1,0 +1,82 @@
+PASS tests/integration/optionalFeatures.test.js (6.303 s)
+  Optional tier (cahier des charges §5-6)
+    admin routes are protected
+      √ get /api/admin/athletes without a token returns 401 (346 ms)
+      √ post /api/admin/athletes without a token returns 401 (171 ms)
+      √ post /api/admin/announcements without a token returns 401 (189 ms)
+      √ post /api/admin/qrcodes without a token returns 401 (195 ms)
+      √ post /api/admin/wods/1/scores without a token returns 401 (202 ms)
+      √ delete /api/admin/scores/1 without a token returns 401 (224 ms)
+    athletes
+      √ creates, lists, and soft-deactivates an athlete (260 ms)
+      √ rejects a non-http photo_url (194 ms)
+      √ returns 400 (not 500) for a non-numeric id (150 ms)
+    scores and leaderboard
+      √ ranks a For Time WOD fastest-first, per category, with shared ranks on ties (312 ms)
+      √ updates the existing score instead of duplicating it (one score per athlete per WOD) (233 ms)
+      √ refuses a new score for a deactivated athlete (214 ms)
+      √ deletes a score (213 ms)
+    announcements
+      √ only shows active announcements publicly, all of them to the coach (177 ms)
+      √ requires a title (144 ms)
+    QR codes
+      √ lists QR codes publicly in order_index order (164 ms)
+      √ rejects a javascript: URL (174 ms)
+
+PASS tests/integration/wodValidation.test.js
+  Admin WOD routes - validation
+    √ rejects a missing session_date (186 ms)
+    √ rejects an incomplete request (no start_time/end_time at all) (147 ms)
+    √ rejects a missing end_time (149 ms)
+    √ rejects a malformed start_time (162 ms)
+    √ rejects an end_time at or before start_time (151 ms)
+    √ rejects an incorrect session_date (145 ms)
+    √ rejects an invalid skill_strength.kind (156 ms)
+    √ rejects an invalid wod.format (157 ms)
+    √ accepts every one of the 6 supported WOD formats (253 ms)
+    √ rejects an exact duplicate (session_date, start_time) with 409 DUPLICATE_SESSION (168 ms)
+    √ allows the same date with a different start_time (188 ms)
+    √ accepts an optional title (156 ms)
+    √ rejects an invalid id on GET (141 ms)
+    √ rejects an invalid id on PUT (150 ms)
+    √ rejects an invalid id on DELETE (160 ms)
+
+PASS tests/integration/wodPersistence.test.js
+  WOD persistence
+    √ persists a full nested session and reassembles it identically on read (235 ms)
+    √ keeps movement order on read-back (157 ms)
+    √ PUT replaces only the block that was sent, leaving the others untouched (187 ms)
+    √ PUT can change the schedule alone (182 ms)
+    √ PUT rejects a schedule change that would put end_time at or before start_time (172 ms)
+    √ DELETE removes the session - a later GET 404s (193 ms)
+    √ POST /admin/wods/:id/duplicate copies a session onto a new slot (223 ms)
+    √ POST /admin/wods/:id/duplicate 409s when duplicating onto the exact same slot (208 ms)
+    √ GET /wods/today returns every session for today, sorted by start_time (222 ms)
+    √ GET /wods/today returns an empty array (200, not 404) when nothing is published (177 ms)
+    √ GET /wods?from=&to= filters the history by date range (203 ms)
+
+PASS tests/integration/auth.test.js
+  Auth
+    √ rejects a missing email/password with 400 (216 ms)
+    √ rejects a wrong password with 401 INVALID_CREDENTIALS (173 ms)
+    √ rejects an unknown email with the same 401 INVALID_CREDENTIALS (not enumerable) (260 ms)
+    √ logs in with correct credentials and returns a usable token (181 ms)
+    √ matches the email case-insensitively and ignores surrounding spaces (168 ms)
+    √ rejects a non-string email with 400 instead of crashing (154 ms)
+    √ revokes the token on logout - it stops working immediately (188 ms)
+    √ rejects logout without a token (162 ms)
+
+PASS tests/integration/wodProtection.test.js
+  Admin WOD routes - protected access
+    √ rejects POST /admin/wods with no Authorization header (197 ms)
+    √ rejects POST /admin/wods with a malformed Authorization header (152 ms)
+    √ rejects POST /admin/wods with a garbage token (172 ms)
+    √ rejects PUT and DELETE on admin routes without a token (162 ms)
+    √ rejects POST /admin/wods/:id/duplicate without a token (158 ms)
+    √ accepts POST /admin/wods with a valid token (201 ms)
+    √ leaves public read routes accessible without any token (161 ms)
+
+Test Suites: 5 passed, 5 total
+Tests:       58 passed, 58 total
+Snapshots:   0 total
+Time:        15.784 s

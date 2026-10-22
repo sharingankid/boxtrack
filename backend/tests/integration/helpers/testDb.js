@@ -13,7 +13,9 @@ async function testPasswordHash() {
 
 async function resetDatabase() {
   await pool.query(
-    'TRUNCATE TABLE movements, wod_blocks, skill_strength_blocks, wods, sessions, users RESTART IDENTITY CASCADE'
+    `TRUNCATE TABLE scores, athletes, announcements, qr_codes,
+       movements, wod_blocks, skill_strength_blocks, wods, sessions, users
+     RESTART IDENTITY CASCADE`
   );
 }
 
