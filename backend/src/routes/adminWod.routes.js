@@ -11,5 +11,6 @@ router.put('/:id', wodController.update);
 router.delete('/:id', wodController.remove);
 router.post('/:id/duplicate', wodController.duplicate);
 router.post('/:id/scores', scoreController.create);
+router.put('/:id/scores', scoreController.createMany);
 
 module.exports = router;

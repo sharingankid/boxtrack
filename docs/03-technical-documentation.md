@@ -153,8 +153,8 @@ src/
 | Component | Tier | Responsibility |
 |---|---|---|
 | `AuthController` / `authService` | `CORE` | Login (verify hashed password, issue session token). |
-| `WodController` / `wodService` / `WodModel` | `CORE` | CRUD for a full session: `wods` row + its `skill_strength_blocks`, `wod_blocks`, and ordered `movements` rows, assembled/disassembled as one nested JSON object per request. Enforces uniqueness of `(session_date, time_slot)`. |
-| `authMiddleware` | `CORE` | Verifies the coach's session on all `/api/admin/*` routes, attaches `req.user`, rejects with 401/403 otherwise. |
+| `WodController` / `wodService` / `WodModel` | `CORE` | CRUD for a full session: `wods` row + its `skill_strength_blocks`, `wod_blocks`, and ordered `movements` rows, assembled/disassembled as one nested JSON object per request. A date can hold several sessions (e.g. a 6am and a 6pm class) - the unique key is `(session_date, start_time)`, not the date alone. Also computes the TV view's current/next/remaining state (`GET /wods/tv-now`) and session duplication (`POST /admin/wods/:id/duplicate`). |
+| `authMiddleware` | `CORE` | Verifies the session token on all `/api/admin/*` routes, attaches `req.user` (including `role`: `owner`/`coach`/`staff`), rejects with 401/403 otherwise. |
 | `ScoreController` / `scoreService` / `ScoreModel` | `OPTIONAL` | Create/update a score; enforces `UNIQUE(wod_id, athlete_id)`; triggers ranking recompute. |
 | `LeaderboardService` | `OPTIONAL` | Computes ranking for a given WOD (server-side, one indexed SQL query, grouped by category). |
 | `AthleteController` / `athleteService` / `AthleteModel` | `OPTIONAL` | CRUD for athletes; deactivate instead of hard delete (preserve score history). |
@@ -162,14 +162,6 @@ src/
 | `QrCodeController` / `qrCodeService` | `OPTIONAL` | CRUD for labeled QR code entries. |
 
 ### 2.2 Front-end structure (React)
-
-The single React/Vite application lives in `frontend/`; the Express API lives in
-`backend/`. Start and check each package from its own directory. The history API
-returns summaries; the front-end loads the full detail before displaying or editing
-Warm-Up, Skill/Strength and WOD. `/screen` refreshes every 30 seconds and fits all
-phase content to its viewport. The component table below describes the planned
-responsibilities; implemented pages are `HomePage`, `HistoryPage`, `SessionPage`,
-`EditorPage`, `LoginPage` and `ScreenPage`.
 
 | Component | Tier | Responsibility |
 |---|---|---|
@@ -195,6 +187,7 @@ erDiagram
     WODS ||--o{ MOVEMENTS : has
     WODS ||--o{ SCORES : "has (optional)"
     ATHLETES ||--o{ SCORES : "achieves (optional)"
+    ATHLETES ||--o| ATHLETE_PHOTOS : "has (optional)"
     USERS ||--o{ ANNOUNCEMENTS : "publishes (optional)"
     USERS ||--o{ QR_CODES : "configures (optional)"
 
@@ -202,13 +195,15 @@ erDiagram
         int id PK
         string email UK
         string password_hash
-        string role "coach"
+        string role "owner | coach | staff"
         timestamp created_at
     }
     WODS {
         int id PK
-        date session_date "unique with time_slot"
-        string time_slot
+        date session_date "UK with start_time"
+        time start_time "UK with session_date, HH:mm"
+        time end_time "must be after start_time"
+        string title "nullable, free text"
         text warmup_general
         text warmup_specific
         int created_by FK
@@ -240,20 +235,23 @@ erDiagram
         int id PK
         string first_name
         string last_name
-        string photo_url "nullable"
+        string photo_url "nullable, external http(s)"
         boolean active
         timestamp created_at
+    }
+    ATHLETE_PHOTOS {
+        int athlete_id PK, FK
+        string content_type "image/jpeg | image/png | image/webp"
+        bytea data "uploaded photo, max 2 MB"
+        timestamp updated_at
     }
     SCORES {
         int id PK
         int wod_id FK
         int athlete_id FK
         string category "RX | Scaled | Modified"
-        string result_raw "display value, e.g. 12:34 or 90kg"
-        int result_seconds "nullable - For Time, Chipper"
-        int result_reps "nullable - Tabata, AMRAP extra reps"
-        int result_rounds "nullable - AMRAP, EMOM"
-        numeric result_kg "nullable - Strength"
+        numeric result_value "seconds (time-based), rounds (AMRAP), else reps/kg"
+        int extra_reps "nullable - AMRAP + reps"
         int recorded_by FK
         timestamp created_at
         timestamp updated_at
@@ -262,8 +260,8 @@ erDiagram
         int id PK
         string title
         text body
-        timestamp starts_at "nullable"
-        timestamp ends_at "nullable"
+        boolean active "unpublish without deleting"
+        date ends_on "nullable - hidden publicly after this day"
         int created_by FK
         timestamp created_at
         timestamp updated_at
@@ -271,8 +269,7 @@ erDiagram
     QR_CODES {
         int id PK
         string label
-        string destination_url
-        string icon "nullable"
+        string url
         int order_index
         int created_by FK
         timestamp created_at
@@ -293,16 +290,41 @@ erDiagram
   its own distinct shape (`kind` vs. `format`) and its own movement list, and keeping them separate
   mirrors the domain's three-phase structure directly, which matters for a schema the coach's own
   team (and the jury) needs to read and trust as an accurate model of a real CrossFit session.
-- **`SCORES` keeps 4 nullable normalized result columns instead of one generic number** - because the
-  6 WOD formats score fundamentally different things (a time, a rep count, a round count, or a
-  load), a single "score" leaderboard/ranking query needs to know exactly which column to sort by
-  per format; `result_raw` remains the human-readable display value shown everywhere else.
-- **`WODS.UNIQUE(session_date, time_slot)`** - permits multiple sessions on a date while
-  rejecting duplicate slots at the database level.
+- **`SCORES.result_value` is one numeric column, not one per format** - a time-based WOD
+  (`FOR_TIME`, `CHIPPER`) is stored as total seconds, an `AMRAP` as completed rounds, every other
+  format (`EMOM`, `TABATA`, `STRENGTH`) as a plain number (reps/rounds/kg). The only format whose
+  score has two parts is the AMRAP (cahier des charges §4: "rounds + reps"), so it gets one extra
+  nullable column, `extra_reps`, used as the tie-breaker between athletes on the same round count.
+  Which direction counts as "better" (ascending for time, descending otherwise) is derived from
+  the WOD's own `format` at read time, never stored per-score - so it can't drift from the WOD it
+  belongs to. The API returns a ready-to-display `result_display` (`12:34`, `8 rds + 12`, `90 kg`).
+- **`ATHLETE_PHOTOS` is a separate 1:1 table holding the image bytes** - hosting providers wipe the
+  local disk on every deploy, so an uploaded photo has to live in the database; keeping it out of
+  `ATHLETES` means listing the roster never loads images. The photo is served by a versioned URL
+  (`/api/athletes/:id/photo?v=<upload time>`), so browsers and the TV can cache it indefinitely.
+- **`ANNOUNCEMENTS.ends_on`** - an optional last day (Europe/Paris): "closed on November 1st"
+  disappears from the TV by itself instead of staying until someone remembers to unpublish it.
+- **Schema evolution** - `db/schema.sql` always describes the current shape for a fresh install;
+  existing databases are upgraded by `db/migrations/NNN_*.sql`, applied in order by
+  `npm run db:migrate` and recorded in a `schema_migrations` table (run automatically on every
+  production start, a no-op when nothing is pending).
+- **`WODS.UNIQUE(session_date, start_time)`**, not the date alone - a box can run several distinct
+  sessions on the same date (e.g. a 6am and a 6pm class with different content), so the real
+  uniqueness key pairs the date with the start time. `CHECK (end_time > start_time)` is enforced
+  at the database level too, not just in application logic (`CORE`, non-negotiable per the cahier
+  des charges).
+- **`start_time`/`end_time` are real `TIME` values in Europe/Paris wall-clock time**, not free
+  text and not a timestamp - this is what makes `GET /wods/tv-now` (current/next/remaining
+  session) a reliable server-side computation instead of the front-end re-implementing
+  timezone-aware comparisons.
 - **`SCORES.UNIQUE(wod_id, athlete_id)`** (`OPTIONAL`) - one score per athlete per WOD; edits update
   the existing row rather than inserting a duplicate.
 - **`ATHLETES.active`** (`OPTIONAL`) is a soft-delete flag: deactivating an athlete hides them from
-  new-score forms without deleting their historical scores.
+  new-score forms without deleting their historical scores. There is no DELETE endpoint for
+  athletes by design - only deactivation.
+- **`USERS.role`** (`owner` / `coach` / `staff`, default `coach`) - every admin route currently
+  accepts all three roles equally; the column and a `requireRole()` middleware exist so a route can
+  be restricted to specific roles later without a schema change, but nothing uses it yet.
 
 **Why PostgreSQL over a document store:** the domain is inherently relational from the `CORE` tier
 alone (a session's phases and ordered movement lists are foreign-keyed rows, not a denormalized
@@ -351,10 +373,10 @@ sequenceDiagram
 
     Visitor->>SPA: Navigate to /
     SPA->>API: GET /api/wods/today
-    API->>DB: SELECT wod + skill_strength_block + wod_block + movements WHERE session_date = today
-    DB-->>API: assembled session
-    API-->>SPA: 200 { wod }
-    SPA-->>Visitor: render Warm-Up / Skill / WOD sections
+    API->>DB: SELECT wods + blocks + movements WHERE session_date = today, sorted by start_time
+    DB-->>API: assembled sessions (possibly more than one)
+    API-->>SPA: 200 { wods: [...] }
+    SPA-->>Visitor: render today's sessions (Warm-Up / Skill / WOD each)
 
     Visitor->>SPA: Click "past sessions"
     SPA->>API: GET /api/wods?from=&to=
@@ -372,18 +394,19 @@ sequenceDiagram
     participant API as Express API
     participant DB as PostgreSQL
 
-    Screen->>API: GET /api/wods/today (initial load)
-    API->>DB: assemble today's session
-    DB-->>API: session
-    API-->>Screen: 200 { wod }
-    Screen-->>Screen: render Warm-Up -> Skill -> WOD, start 30s interval
+    Screen->>API: GET /api/wods/tv-now (initial load)
+    API->>API: compute current/next/remaining from today's sessions vs. Europe/Paris "now"
+    API->>DB: assemble today's sessions
+    DB-->>API: sessions
+    API-->>Screen: 200 { reference_time, timezone, current, next, remaining }
+    Screen-->>Screen: render current session (Warm-Up -> Skill -> WOD) or an empty state, start 30s interval
 
     loop every 30 seconds
-        Screen->>API: GET /api/wods/today
-        API->>DB: assemble today's session
-        DB-->>API: session
-        API-->>Screen: 200 { wod }
-        Screen-->>Screen: diff & re-render (no full reload) - picks up a mid-class coach edit
+        Screen->>API: GET /api/wods/tv-now
+        API->>DB: assemble today's sessions
+        DB-->>API: sessions
+        API-->>Screen: 200 { current, next, remaining, ... }
+        Screen-->>Screen: diff & re-render (no full reload) - picks up a mid-class coach edit or a class change
     end
 ```
 
@@ -396,11 +419,12 @@ sequenceDiagram
     participant API as Express API
     participant DB as PostgreSQL
 
-    Coach->>SPA: Fill score form for an athlete, submit
-    SPA->>API: POST /api/admin/scores (Authorization: Bearer <token>)
-    API->>DB: INSERT/UPDATE score (ON CONFLICT wod_id, athlete_id)
-    DB-->>API: score saved
-    API-->>SPA: 201/200 { score }
+    Coach->>SPA: Fill the scores of the whole class, submit
+    SPA->>API: PUT /api/admin/wods/:id/scores { scores: [...] } (Authorization: Bearer <token>)
+    API->>API: validate every entry against the WOD's format (time, rounds + reps, kg...)
+    API->>DB: BEGIN, INSERT/UPDATE each score (ON CONFLICT wod_id, athlete_id), COMMIT
+    DB-->>API: scores saved
+    API-->>SPA: 200 { rankings } (ranked leaderboard, ready to display)
     Note over SPA,DB: Public /leaderboard and /screen (if extended) re-query and re-rank on next fetch/poll.
 ```
 
@@ -421,52 +445,76 @@ deliberate choice, see [Section 1](#1-system-architecture)).
 
 ### 4.2 Internal API - Endpoints
 
-Base URL: `/api`. All admin routes require `Authorization: Bearer <token>` and are protected by
-`authMiddleware` (401 if missing/invalid, 403 if role check fails).
+**`backend/API_CONTRACT.md` is the authoritative, field-by-field source of truth for the API** -
+the table below is a summary for the technical overview; it is kept in sync with that file but
+defers to it on any discrepancy.
+
+Base URL: `/api`. Admin routes require `Authorization: Bearer <token>` and are protected by
+`requireAuth` (401 if missing/invalid/expired token) - every role (`owner`/`coach`/`staff`) has
+equal access today, see §2.3. Dates are `YYYY-MM-DD`, `start_time`/`end_time` are `HH:mm` in
+Europe/Paris wall-clock time (never UTC, never a timestamp).
 
 #### Auth (`CORE`)
 
 | Method | Path | Auth | Input | Output |
 |---|---|---|---|---|
-| POST | `/api/auth/login` | Public | `{ email, password }` | `200 { token, user: { id, email } }` / `401 { error }` |
-| POST | `/api/auth/logout` | Coach | — | `204` (invalidates the session) |
+| POST | `/api/auth/login` | Public | `{ email, password }` | `200 { token, user: { id, email, role }, expires_at }` / `401 { error }` |
+| GET | `/api/auth/me` | Authenticated | — | `200 { user, expires_at }` / `401` if the stored token was revoked or expired |
+| POST | `/api/auth/logout` | Authenticated | — | `204` (deletes the session token server-side, not just expiry) |
 
 #### Sessions / WODs (`CORE`)
 
+A date can hold several sessions - the unique key is `(session_date, start_time)`, not the date
+alone, so `GET /wods/today` always returns an **array**, even with one session.
+
 | Method | Path | Auth | Input | Output |
 |---|---|---|---|---|
-| GET | `/api/wods/today` | Public | — | `200 { wod }` (full nested session) / `404` if none published |
-| GET | `/api/wods` | Public | Query: `?from=&to=` (optional date range) | `200 { wods: [...] }` (summaries, for history nav) |
+| GET | `/api/wods/today` | Public | — | `200 { wods: [...] }` (full nested sessions, sorted by `start_time`; empty array if none published) |
+| GET | `/api/wods/tv-now` | Public | — | `200 { reference_date, reference_time, timezone: "Europe/Paris", current, next, remaining }` - backend-computed current/next/remaining session for the TV view |
+| GET | `/api/wods` | Public | Query: `?from=&to=` (optional date range) | `200 { wods: [...] }` (summaries: `id, session_date, start_time, end_time, title, format`) |
 | GET | `/api/wods/:id` | Public | — | `200 { wod }` (full nested session) / `404` |
-| POST | `/api/admin/wods` | Coach | `{ session_date, time_slot, warmup: { general, specific }, skill_strength: { kind, instructions, movements: [{ movement_name, detail }] }, wod: { format, duration_or_target, notes, movements: [{ movement_name, detail }] } }` | `201 { wod }` / `409` if the date and time slot already have a session |
-| PUT | `/api/admin/wods/:id` | Coach | Same shape, any subset of fields | `200 { wod }` / `404` |
-| DELETE | `/api/admin/wods/:id` | Coach | — | `204` / `404` |
+| POST | `/api/admin/wods` | Authenticated | `{ session_date, start_time, end_time, title?, warmup?: { general, specific }, skill_strength?: { kind, instructions, movements: [{ movement_name, detail }] }, wod?: { format, duration_or_target, notes, movements: [{ movement_name, detail }] } }` | `201 { wod }` / `400` invalid schedule / `409 DUPLICATE_SESSION` if `(session_date, start_time)` is already taken |
+| PUT | `/api/admin/wods/:id` | Authenticated | Same shape, any subset of fields | `200 { wod }` / `404` / `409 DUPLICATE_SESSION` |
+| POST | `/api/admin/wods/:id/duplicate` | Authenticated | `{ session_date?, start_time?, end_time?, title? }` (anything omitted is copied from the source session) | `201 { wod }` (new session) / `404` / `409 DUPLICATE_SESSION` |
+| DELETE | `/api/admin/wods/:id` | Authenticated | — | `204` / `404` |
 
-#### Scores & Leaderboard (`OPTIONAL`)
+#### Scores & Leaderboard (`OPTIONAL`, implemented)
 
-| Method | Path | Auth | Input | Output |
-|---|---|---|---|---|
-| POST | `/api/admin/scores` | Coach | `{ wod_id, athlete_id, category, result_raw }` | `201 { score }` (upserts on `UNIQUE(wod_id, athlete_id)`) |
-| PUT | `/api/admin/scores/:id` | Coach | `{ category?, result_raw? }` | `200 { score }` / `404` |
-| GET | `/api/wods/:id/leaderboard` | Public | Query: `?category=RX\|Scaled\|Modified` (optional) | `200 { wod, rankings: [{ rank, athlete, category, result_raw }] }` |
-| GET | `/api/wods/today/leaderboard` | Public | Same as above | Same shape |
-
-#### Athletes (`OPTIONAL`)
+The result follows the WOD's format: `time` (`"12:34"`) or `result_value` in seconds for
+`FOR_TIME`/`CHIPPER`, `rounds` + `reps` for an `AMRAP`, `result_value` otherwise (reps/rounds/kg).
+Ranked separately per category (RX never competes against Scaled), ascending or descending
+depending on the WOD's own `format`; every score carries a ready-to-display `result_display`.
 
 | Method | Path | Auth | Input | Output |
 |---|---|---|---|---|
-| GET | `/api/admin/athletes` | Coach | Query: `?active=true\|false` | `200 { athletes: [...] }` |
-| POST | `/api/admin/athletes` | Coach | `{ first_name, last_name, photo_url? }` | `201 { athlete }` |
-| PUT | `/api/admin/athletes/:id` | Coach | `{ first_name?, last_name?, photo_url?, active? }` | `200 { athlete }` / `404` |
+| POST | `/api/admin/wods/:id/scores` | Authenticated | `{ athlete_id, category, time? \| rounds?, reps? \| result_value? }` | `201 { score }` (upserts on `UNIQUE(wod_id, athlete_id)`) |
+| PUT | `/api/admin/wods/:id/scores` | Authenticated | `{ scores: [ ...same entries ] }` (whole class, up to 60) | `200` leaderboard - all-or-nothing, one transaction |
+| DELETE | `/api/admin/scores/:id` | Authenticated | — | `204` / `404` |
+| GET | `/api/wods/:id/leaderboard` | Public | — | `200 { wod_id, format, sort, rankings: { RX: [...], Scaled: [...], Modified: [...] } }`, each entry ranked within its own category |
 
-#### Announcements & QR Codes (`OPTIONAL`)
+#### Athletes (`OPTIONAL`, implemented)
+
+Coach-managed roster, no public list, no delete endpoint - `active: false` deactivates instead.
 
 | Method | Path | Auth | Input | Output |
 |---|---|---|---|---|
-| GET | `/api/announcements` | Public | — | `200 { announcements: [...] }` |
-| POST/PUT/DELETE | `/api/admin/announcements[/:id]` | Coach | `{ title, body, starts_at?, ends_at? }` | Standard CRUD responses |
-| GET | `/api/qr-codes` | Public | — | `200 { qrCodes: [...] }` |
-| POST/PUT/DELETE | `/api/admin/qr-codes[/:id]` | Coach | `{ label, destination_url, icon? }` | Standard CRUD responses |
+| GET | `/api/admin/athletes` | Authenticated | Query: `?active=true\|false` | `200 { athletes: [...] }` |
+| POST | `/api/admin/athletes` | Authenticated | `{ first_name, last_name, photo_url? }` | `201 { athlete }` |
+| PUT | `/api/admin/athletes/:id` | Authenticated | `{ first_name?, last_name?, photo_url?, active? }` | `200 { athlete }` / `404` |
+| PUT | `/api/admin/athletes/:id/photo` | Authenticated | Raw JPEG/PNG/WebP body (max 2 MB) | `200 { athlete }` / `400` not an image / `413` too large |
+| DELETE | `/api/admin/athletes/:id/photo` | Authenticated | — | `204` / `404` |
+| GET | `/api/athletes/:id/photo` | Public | — | The image (cacheable, versioned URL) / `404` |
+
+#### Announcements & QR Codes (`OPTIONAL`, implemented)
+
+| Method | Path | Auth | Input | Output |
+|---|---|---|---|---|
+| GET | `/api/announcements` | Public | — | `200 { announcements: [...] }` (active and not past `ends_on`) |
+| GET | `/api/announcements/:id` | Public | — | `200 { announcement }` - shareable link / `404` if unpublished or expired |
+| GET | `/api/admin/announcements` | Authenticated | — | `200 { announcements: [...] }` (all, including inactive and expired) |
+| POST/PUT/DELETE | `/api/admin/announcements[/:id]` | Authenticated | `{ title, body?, active?, ends_on? }` | Standard CRUD responses - `active: false` unpublishes without deleting |
+| GET | `/api/qrcodes` | Public | — | `200 { qr_codes: [...] }` |
+| POST/PUT/DELETE | `/api/admin/qrcodes[/:id]` | Authenticated | `{ label, url, order_index? }` | Standard CRUD responses - QR images are generated client-side from `url`, nothing image-like is stored server-side |
 
 **Error format (consistent across all endpoints):**
 
@@ -495,7 +543,7 @@ Base URL: `/api`. All admin routes require `Authorization: Bearer <token>` and a
 | Test type | Scope | Tooling |
 |---|---|---|
 | **Unit tests** | Services and models in isolation (e.g. session assembly/disassembly across `wods`/`skill_strength_blocks`/`wod_blocks`/`movements`, auth password-check helper, and - `OPTIONAL` - ranking computation, score upsert logic). | Jest |
-| **Integration tests** | API endpoints against a real test database (e.g. login rejects wrong password, admin routes reject missing/invalid session with 401/403, `(session_date, time_slot)` uniqueness constraint returns a clean error instead of a 500). | Jest + Supertest, seeded test PostgreSQL instance |
+| **Integration tests** | API endpoints against a real test database (e.g. login rejects wrong password, admin routes reject missing/invalid session with 401/403, `wods.session_date` `UNIQUE` constraint returns a clean error instead of a 500). | Jest + Supertest, seeded test PostgreSQL instance |
 | **Manual/exploratory testing** | Critical `CORE` flow first: publish a full session (<5 min, no training) -> public display -> `/screen` projection on an actual TV/large display at 5-8m for contrast and layout; `OPTIONAL` flow (score entry -> leaderboard) tested only once `CORE` is signed off. | Manual, checklist per sprint |
 | **API contract testing** | Verifying request/response shapes against Section 4 before front-end integration. | Postman collection, exported and versioned in `/docs/postman/` |
 | **Accessibility check** | WCAG AAA contrast validation specifically for `/screen` (SMART goal 3, [01-idea-development.md §3.6](01-idea-development.md)). | Browser DevTools contrast checker / axe |

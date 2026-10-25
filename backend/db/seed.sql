@@ -249,36 +249,43 @@ INSERT INTO athletes (first_name, last_name, created_by) VALUES
 INSERT INTO athletes (first_name, last_name, active, created_by) VALUES
     ('Inès', 'Roux', false, (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr'));
 
--- Scores for today's 18:00 AMRAP session (higher result_value wins).
-INSERT INTO scores (wod_id, athlete_id, category, result_value, recorded_by)
+-- Scores for today's 18:00 AMRAP session: rounds + extra reps (a round is
+-- 30 reps: 10 deadlift, 10 burpee, 10 box jump), more is better.
+INSERT INTO scores (wod_id, athlete_id, category, result_value, extra_reps, recorded_by)
 SELECT
     (SELECT id FROM wods WHERE session_date = CURRENT_DATE AND start_time = '18:00'),
     athletes.id,
     t.category,
-    t.result_value,
+    t.rounds,
+    t.extra_reps,
     (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
 FROM (VALUES
-    ('Bernard', 'RX', 187),
-    ('Nguyen', 'RX', 164),
-    ('Petit', 'Scaled', 142),
-    ('Moreau', 'RX', 201)
-) AS t(last_name, category, result_value)
+    ('Bernard', 'RX', 6, 7),
+    ('Nguyen', 'RX', 5, 14),
+    ('Petit', 'Scaled', 4, 22),
+    ('Moreau', 'RX', 6, 21)
+) AS t(last_name, category, rounds, extra_reps)
 JOIN athletes ON athletes.last_name = t.last_name;
 
-INSERT INTO announcements (title, body, created_by) VALUES
+-- ends_on relative to the seeding day so the demo screen always has
+-- announcements to show; the last one has no end date.
+INSERT INTO announcements (title, body, ends_on, created_by) VALUES
     (
         'Open Day samedi 14 novembre',
         'Portes ouvertes toute la journée, amenez un ami pour une séance découverte gratuite.',
+        CURRENT_DATE + 20,
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
     ),
     (
         'Fermeture exceptionnelle le 1er novembre',
         'La box sera fermée pour le jour férié. Reprise normale le lendemain.',
+        CURRENT_DATE + 7,
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
     ),
     (
         'Nouveau coach : Marine',
         'Marine rejoint l''équipe de coachs à partir du mois prochain, spécialisée en haltérophilie.',
+        NULL,
         (SELECT id FROM users WHERE email = 'coach@crossfitlab.fr')
     );
 

@@ -1,6 +1,7 @@
 const wodModel = require('../models/wodModel');
 const ApiError = require('../utils/ApiError');
 const { assertValidId, isValidIsoDate } = require('../utils/validators');
+const { todayIsoDate, nowHoursMinutes } = require('../utils/boxTime');
 
 const VALID_FORMATS = ['AMRAP', 'FOR_TIME', 'EMOM', 'TABATA', 'CHIPPER', 'STRENGTH'];
 const VALID_KINDS = ['skill', 'strength'];
@@ -61,30 +62,6 @@ function assertValidMovements(movements, label) {
       throw new ApiError(400, 'VALIDATION_ERROR', `${label}.movements[${index}].movement_name is required`);
     }
   });
-}
-
-// BoxTrack only runs for CrossFit LAB (Toulouse), so "today" and "now" must
-// follow Europe/Paris wall-clock time, not UTC or the server's local time -
-// otherwise /wods/today and the TV "current session" logic drift by 1-2h.
-const TODAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Paris',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/Paris',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
-
-function todayIsoDate() {
-  return TODAY_FORMATTER.format(new Date());
-}
-
-function nowHoursMinutes() {
-  return TIME_FORMATTER.format(new Date());
 }
 
 // A date can have more than one session (different schedules) - always
