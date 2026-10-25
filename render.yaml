@@ -16,8 +16,12 @@ services:
       npm --prefix frontend ci &&
       VITE_DATA_MODE=api VITE_API_BASE_URL=/api npm --prefix frontend run build &&
       npm --prefix backend ci --omit=dev
-    # --if-empty: creates the schema on the first deploy, no-op afterwards.
-    startCommand: npm --prefix backend run db:setup -- --if-empty && npm --prefix backend start
+    # db:setup --if-empty creates the schema on the first deploy (no-op
+    # afterwards); db:migrate then applies any new db/migrations/ file.
+    startCommand: >-
+      npm --prefix backend run db:setup -- --if-empty &&
+      npm --prefix backend run db:migrate &&
+      npm --prefix backend start
     healthCheckPath: /health
     envVars:
       - key: NODE_VERSION

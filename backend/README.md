@@ -62,18 +62,24 @@ npm run db:setup             # schema only - what production uses
 With `psql` installed, `psql "$DATABASE_URL" -f db/schema.sql` (then `-f db/seed.sql`) does the
 same thing.
 
-`db/schema.sql` is the canonical fresh-install script - it already reflects the current schema
-(real schedules, no Recipes tables). **If you have an existing database created from an older
-version of this schema** (free-text `time_slot`, Recipes tables present), run the migration
-instead of `schema.sql`:
+`db/schema.sql` is the canonical fresh-install script - it always reflects the current schema.
+**An existing database** (created from an older version of this schema) is brought up to date
+with:
 
 ```bash
-psql "$DATABASE_URL" -f db/migrations/001_real_schedules_and_remove_recipes.sql
+npm run db:migrate
 ```
 
-See that file's header comment for exactly what it does to existing rows (nothing is silently
-deleted - full explanation of the `time_slot` → `start_time`/`end_time` conversion, the default
-duration used, and what happens to Recipes data).
+It applies every file in `db/migrations/` the database hasn't seen yet, in order, each in its own
+transaction, and records it in the `schema_migrations` table - so it is safe to run any number of
+times (production runs it on every start, see `render.yaml`). A database created before
+`schema_migrations` existed is detected and baselined automatically. Each migration's header
+comment says exactly what it does to existing rows (001 converts `time_slot` to
+`start_time`/`end_time` and drops the Recipes tables; 002 is purely additive).
+
+Adding a migration: create `db/migrations/NNN_description.sql` (no `BEGIN`/`COMMIT`, the runner
+wraps it), apply the same change to `db/schema.sql`, and add the file name to the
+`schema_migrations` insert at the end of `schema.sql`.
 
 Demo coach login (only if you ran the seed): `coach@crossfitlab.fr` / `CoachDemo2026!`. This
 password is public (it's in this file) - **never load the seed on the production database.**
@@ -133,8 +139,8 @@ Render on the `*.onrender.com` URL (and on a custom domain such as `boxtrack.cro
 one is added).
 
 1. Render dashboard → **New → Blueprint** → select the GitHub repository. It deploys `main`.
-2. The start command runs `npm run db:setup -- --if-empty` first: the schema is created on the
-   first deploy, every later deploy leaves the database untouched.
+2. The start command runs `npm run db:setup -- --if-empty` then `npm run db:migrate`: the schema
+   is created on the first deploy, and every later deploy only applies new migrations (if any).
 3. Create Timothé's account from your own machine, using the database's **External Database URL**
    (Render dashboard → `boxtrack-db` → Connections) - the free plan has no shell:
 
@@ -175,13 +181,14 @@ npm test               # unit tests - pure functions, no database needed
 npm run test:integration   # protected access, validation, persistence - needs a real database
 ```
 
-Unit tests (`tests/*.test.js`, 60 tests) cover pure logic: session assembly, schedule/role
+Unit tests (`tests/*.test.js`, 75 tests) cover pure logic: session assembly, schedule/role
 validation, the `/wods/tv-now` current/next/remaining selection (including Europe/Paris DST
-correctness), leaderboard ranking (including ties), score-entry rules, input validators (calendar
+correctness), leaderboard ranking (including ties and the AMRAP extra-reps tie-break), score
+parsing/formatting per WOD format and whole-class validation, photo type detection, input validators (calendar
 dates, http(s)-only URLs, ids), token extraction, error formatting, and the single-service
 front-end serving (SPA fallback, cache headers, `/api` left alone).
 
-Integration tests (`tests/integration/`, 58 tests) run the real Express app with Supertest against
+Integration tests (`tests/integration/`, 67 tests) run the real Express app with Supertest against
 a real Postgres database - they `TRUNCATE` every table before each test, so **never point them at
 your dev database**:
 
@@ -198,8 +205,10 @@ valid ones (`auth.test.js`, `wodProtection.test.js`), every schedule/payload val
 the `(session_date, start_time)` conflict (`wodValidation.test.js`), and that a full nested session
 round-trips correctly through create/read/update/duplicate/delete, including `/wods/today` across
 multiple same-day sessions (`wodPersistence.test.js`). `optionalFeatures.test.js` covers the
-Optional tier end to end: athlete soft-delete, score upsert and leaderboard ordering/ties,
-announcement visibility, QR code ordering and URL safety, and `401` on every optional admin route.
+Optional tier end to end: athlete soft-delete, photo upload/serving/size and type limits, score
+upsert and leaderboard ordering/ties, AMRAP rounds + reps, whole-class entry (including the
+all-or-nothing rollback), announcement visibility, expiry and shareable link, QR code ordering
+and URL safety, and `401` on every optional admin route.
 
 **CI**: `.github/workflows/backend.yml` runs lint, format check, unit tests, then the integration
 tests against a Postgres service container, on every push and pull request touching `backend/`.

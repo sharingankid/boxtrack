@@ -297,47 +297,82 @@ completeness - see `src/controllers/{athlete,score,announcement,qrCode}Controlle
 implementation if a field's exact shape isn't obvious below. Every `:id` must be a positive integer
 (`400 VALIDATION_ERROR` otherwise, never a `500`); a missing resource is `404 NOT_FOUND`.
 
-### Athletes - `GET/POST/PUT /admin/athletes[/:id]` (authenticated, no public route)
+### Athletes - `GET/POST/PUT /admin/athletes[/:id]` (authenticated)
 
-Coach-managed roster: `{ id, first_name, last_name, photo_url, active, created_at, updated_at }`.
+Coach-managed roster:
+`{ id, first_name, last_name, photo_url, has_uploaded_photo, active, created_at, updated_at }`.
 No delete - `PUT` with `{ "active": false }` deactivates (soft-delete, keeps score history intact).
 `GET /admin/athletes?active=true|false` filters (any other value is a `400`). `photo_url` is
 optional but must be an `http(s)` URL when sent; `active` must be a real JSON boolean.
 
+**Photos.** Either an external `photo_url`, or a photo uploaded from the coach's phone:
+
+- `PUT /admin/athletes/:id/photo` (authenticated) - the **raw image** as the request body (not
+  JSON, not multipart), `Content-Type: image/jpeg`, `image/png` or `image/webp`, **2 MB max**
+  (resize client-side before upload). The real type is checked from the file's bytes, not the
+  header. → `200 { athlete }`, `400` if it isn't one of those images, `413 PAYLOAD_TOO_LARGE` if
+  over 2 MB. In the browser: `fetch(url, { method: 'PUT', headers: { Authorization, 'Content-Type': file.type }, body: file })`.
+- `DELETE /admin/athletes/:id/photo` (authenticated) → `204`, `404` if there was none.
+- `GET /athletes/:id/photo` (**public**, so the leaderboard on the TV can show it) → the image.
+
+Once uploaded, the athlete's `photo_url` becomes `/api/athletes/:id/photo?v=<upload time>` and
+`has_uploaded_photo` is `true` - use `photo_url` as-is in `<img src>`, it changes with every new
+upload so it can be cached for good. Sending that same URL back in a `PUT /admin/athletes/:id` is
+ignored (treated as "unchanged"), so a form can echo the athlete it read.
+
 ### Scores & leaderboard
 
-- `POST /admin/wods/:id/scores` (authenticated) - `{ athlete_id, category, result_value }`,
-  `category` one of `RX`/`Scaled`/`Modified`. `result_value` is always numeric: a time-based WOD
-  (`FOR_TIME`, `CHIPPER`) is entered as total seconds (convert `MM:SS` client-side), everything
-  else (`AMRAP`, `EMOM`, `TABATA`, `STRENGTH`) as a plain number (reps/rounds/kg). Upserts - a
-  second score for the same athlete on the same WOD replaces the first. `400` if the athlete
-  doesn't exist **or is deactivated** (a member who left keeps past scores but gets no new ones),
-  or if the session has no WOD block.
+What the coach types depends on the WOD's `format` (cahier des charges §4):
+
+| WOD format | Send | Stored as | `result_display` |
+|---|---|---|---|
+| `FOR_TIME`, `CHIPPER` | `time: "12:34"` (or `"1:02:03"`), or `result_value` in seconds | seconds | `"12:34"` |
+| `AMRAP` | `rounds` (whole number, required) + `reps` (whole number, default 0) | `result_value` = rounds, `extra_reps` = reps | `"8 rds + 12"` |
+| `EMOM`, `TABATA` | `result_value` (rounds or reps) | as sent | `"84"` |
+| `STRENGTH` | `result_value` (kg) | as sent | `"92.5 kg"` |
+
+An AMRAP sent with only `result_value` is a `400` - rounds and extra reps can't be mixed with a
+total rep count on the same leaderboard.
+
+- `POST /admin/wods/:id/scores` (authenticated) - one score:
+  `{ athlete_id, category, ...result as above }`, `category` one of `RX`/`Scaled`/`Modified`.
+  Upserts - a second score for the same athlete on the same WOD replaces the first. `400` if the
+  athlete doesn't exist **or is deactivated** (a member who left keeps past scores but gets no new
+  ones), or if the session has no WOD block. → `201 { score }`.
+- `PUT /admin/wods/:id/scores` (authenticated) - **the whole class at once**:
+  `{ "scores": [ { athlete_id, category, ...result }, ... ] }`, 1 to 60 entries, each athlete at
+  most once. All-or-nothing: every entry is validated before anything is written, then all are
+  upserted in one transaction. A `400` names the faulty entry (`scores[3].rounds is required...`).
+  → `200` with the same body as the leaderboard below. Athletes not in the batch keep their scores.
 - `DELETE /admin/scores/:id` (authenticated).
 - `GET /wods/:id/leaderboard` (public) - ranked per category (RX ranked only against RX, etc.),
   ascending for time-based formats, descending otherwise - the direction is derived from the WOD's
-  own `format`, never stored on the score itself. **Ties share a rank** (standard competition
-  ranking: two athletes on `754` s are both `rank: 1`, the next one is `rank: 3`).
+  own `format`, never stored on the score itself. An AMRAP ranks on rounds, then extra reps.
+  **Ties share a rank** (standard competition ranking: two athletes on `754` s are both
+  `rank: 1`, the next one is `rank: 3`).
 
 ```json
 {
   "wod_id": 7, "format": "FOR_TIME", "sort": "asc",
   "rankings": {
-    "RX": [ { "rank": 1, "id": 3, "wod_id": 7, "athlete": { "id": 2, "first_name": "Léa", "last_name": "Martin" }, "category": "RX", "result_value": 754, "created_at": "...", "updated_at": "..." } ],
+    "RX": [ { "rank": 1, "id": 3, "wod_id": 7, "athlete": { "id": 2, "first_name": "Léa", "last_name": "Martin" }, "category": "RX", "result_value": 754, "extra_reps": null, "result_display": "12:34", "created_at": "...", "updated_at": "..." } ],
     "Scaled": [],
     "Modified": []
   }
 }
 ```
 
-### Announcements - `GET /announcements` (public, active only), `GET/POST/PUT/DELETE /admin/announcements[/:id]` (authenticated, all)
+### Announcements - `GET /announcements` (public, visible only), `GET/POST/PUT/DELETE /admin/announcements[/:id]` (authenticated, all)
 
-`{ id, title, body, active, created_at, updated_at }`, newest first. `title` required;
-`active: false` (a JSON boolean) unpublishes without deleting.
+`{ id, title, body, active, ends_on, created_at, updated_at }`, newest first. `title` required;
+`active: false` (a JSON boolean) unpublishes without deleting. `ends_on` is optional: a
+`YYYY-MM-DD` date (Europe/Paris) after which the announcement disappears from the public views by
+itself - shown through that whole day, hidden from the next. `null` (or omitted) = no end date;
+send `null` in a `PUT` to remove one. The admin list always returns everything, expired included.
 
 `GET /announcements/:id` (public) is the shareable link to one announcement
-(`{ "announcement": {...} }`). An unpublished announcement is `404 NOT_FOUND`, exactly like one
-that doesn't exist, so a link shared earlier stops showing it as soon as the coach pulls it down.
+(`{ "announcement": {...} }`). An unpublished or expired announcement is `404 NOT_FOUND`, exactly
+like one that doesn't exist, so a link shared earlier stops showing it.
 
 ### QR codes - `GET /qrcodes` (public), `POST/PUT/DELETE /admin/qrcodes[/:id]` (authenticated)
 
@@ -349,6 +384,16 @@ that doesn't exist, so a link shared earlier stops showing it as soon as the coa
 ---
 
 ## Changelog - breaking changes from the previous version of this contract
+
+**Score shapes, whole-class entry, photos, announcement end date (October 2026).**
+- **Breaking:** an `AMRAP` score is now `rounds` + `reps` (`result_value` alone is a `400`).
+  Other formats are unchanged; `FOR_TIME`/`CHIPPER` additionally accept `time: "MM:SS"`.
+- Every score now carries `extra_reps` and `result_display`.
+- New `PUT /admin/wods/:id/scores` (whole class, one transaction).
+- New photo upload: `PUT`/`DELETE /admin/athletes/:id/photo`, public `GET /athletes/:id/photo`;
+  athletes gain `has_uploaded_photo`.
+- Announcements gain an optional `ends_on`.
+- A request body over the size limit is now `413 PAYLOAD_TOO_LARGE` (was a `500`).
 
 **Deployment and session additions (October 2026).** Additive only, nothing existing changed shape:
 - `POST /auth/login` also returns `expires_at`.

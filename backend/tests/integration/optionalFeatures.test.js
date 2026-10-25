@@ -197,6 +197,149 @@ describe('Optional tier (cahier des charges §5-6)', () => {
       expect((await request(app).get('/api/announcements/999')).status).toBe(404);
       expect((await request(app).get('/api/announcements/abc')).status).toBe(400);
     });
+
+    it('takes an announcement off the public views once its ends_on day is over', async () => {
+      const post = (title, endsOn) =>
+        request(app).post('/api/admin/announcements').set(auth()).send({ title, ends_on: endsOn });
+      expect((await post('Passée', '2020-01-01')).status).toBe(201);
+      await post('Sans fin', null);
+      const future = await post('Open Day', '2099-11-14');
+      expect(future.body.announcement.ends_on).toBe('2099-11-14');
+
+      const visible = (await request(app).get('/api/announcements')).body.announcements;
+      expect(visible.map((a) => a.title).sort()).toEqual(['Open Day', 'Sans fin']);
+      expect(
+        (await request(app).get('/api/admin/announcements').set(auth())).body.announcements
+      ).toHaveLength(3);
+
+      expect((await post('Mauvaise date', '2026-02-31')).status).toBe(400);
+    });
+  });
+
+  describe('AMRAP scores and whole-class entry', () => {
+    const AMRAP_SESSION = {
+      session_date: '2026-11-04',
+      start_time: '18:00',
+      end_time: '19:00',
+      wod: { format: 'AMRAP', duration_or_target: '20 min', movements: [{ movement_name: 'Burpee' }] },
+    };
+    const athlete = async (firstName) =>
+      (
+        await request(app)
+          .post('/api/admin/athletes')
+          .set(auth())
+          .send({ first_name: firstName, last_name: 'Test' })
+      ).body.athlete.id;
+
+    it('records a class in one call, ranking an AMRAP on rounds then extra reps', async () => {
+      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(AMRAP_SESSION)).body.wod.id;
+      const [a, b, c] = [await athlete('A'), await athlete('B'), await athlete('C')];
+
+      const res = await request(app)
+        .put(`/api/admin/wods/${wodId}/scores`)
+        .set(auth())
+        .send({
+          scores: [
+            { athlete_id: a, category: 'RX', rounds: 6, reps: 7 },
+            { athlete_id: b, category: 'RX', rounds: 6, reps: 21 },
+            { athlete_id: c, category: 'Scaled', rounds: 4 },
+          ],
+        });
+      expect(res.status).toBe(200);
+      expect(res.body.rankings.RX.map((r) => [r.athlete.id, r.rank, r.result_display])).toEqual([
+        [b, 1, '6 rds + 21'],
+        [a, 2, '6 rds + 7'],
+      ]);
+      expect(res.body.rankings.Scaled[0].result_display).toBe('4 rds + 0');
+    });
+
+    it('writes nothing when one entry of the batch is invalid', async () => {
+      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(AMRAP_SESSION)).body.wod.id;
+      const a = await athlete('A');
+
+      const res = await request(app)
+        .put(`/api/admin/wods/${wodId}/scores`)
+        .set(auth())
+        .send({
+          scores: [
+            { athlete_id: a, category: 'RX', rounds: 6 },
+            { athlete_id: 999, category: 'RX', rounds: 5 },
+          ],
+        });
+      expect(res.status).toBe(400);
+      const board = await request(app).get(`/api/wods/${wodId}/leaderboard`);
+      expect(board.body.rankings.RX).toHaveLength(0);
+    });
+
+    it('accepts a For Time result typed as MM:SS', async () => {
+      const wodId = (await request(app).post('/api/admin/wods').set(auth()).send(FOR_TIME_SESSION)).body.wod
+        .id;
+      const res = await request(app)
+        .post(`/api/admin/wods/${wodId}/scores`)
+        .set(auth())
+        .send({ athlete_id: await athlete('A'), category: 'RX', time: '12:34' });
+      expect(res.status).toBe(201);
+      expect(res.body.score).toMatchObject({ result_value: 754, result_display: '12:34' });
+    });
+  });
+
+  describe('athlete photos', () => {
+    const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.alloc(64, 1)]);
+
+    it('uploads, serves publicly with a versioned URL, and removes a photo', async () => {
+      const id = (
+        await request(app)
+          .post('/api/admin/athletes')
+          .set(auth())
+          .send({ first_name: 'Léa', last_name: 'Martin' })
+      ).body.athlete.id;
+
+      const uploaded = await request(app)
+        .put(`/api/admin/athletes/${id}/photo`)
+        .set(auth())
+        .set('Content-Type', 'image/jpeg')
+        .send(JPEG);
+      expect(uploaded.status).toBe(200);
+      expect(uploaded.body.athlete.has_uploaded_photo).toBe(true);
+      expect(uploaded.body.athlete.photo_url).toMatch(new RegExp(`^/api/athletes/${id}/photo\\?v=\\d+$`));
+
+      const served = await request(app).get(uploaded.body.athlete.photo_url);
+      expect(served.status).toBe(200);
+      expect(served.headers['content-type']).toBe('image/jpeg');
+      expect(Buffer.compare(served.body, JPEG)).toBe(0);
+
+      // Re-sending the athlete as read must not trip the http(s) photo_url check.
+      const echoed = await request(app)
+        .put(`/api/admin/athletes/${id}`)
+        .set(auth())
+        .send({ first_name: 'Léa', photo_url: uploaded.body.athlete.photo_url });
+      expect(echoed.status).toBe(200);
+
+      expect((await request(app).delete(`/api/admin/athletes/${id}/photo`).set(auth())).status).toBe(204);
+      expect((await request(app).get(`/api/athletes/${id}/photo`)).status).toBe(404);
+    });
+
+    it('refuses a non-image, an oversized file, and an anonymous upload', async () => {
+      const id = (
+        await request(app).post('/api/admin/athletes').set(auth()).send({ first_name: 'A', last_name: 'B' })
+      ).body.athlete.id;
+      const upload = (body, type = 'image/png') =>
+        request(app).put(`/api/admin/athletes/${id}/photo`).set(auth()).set('Content-Type', type).send(body);
+
+      expect((await upload(Buffer.from('<svg/>'))).status).toBe(400);
+      const tooBig = Buffer.concat([JPEG, Buffer.alloc(2 * 1024 * 1024)]);
+      const big = await upload(tooBig, 'image/jpeg');
+      expect(big.status).toBe(413);
+      expect(big.body.error.code).toBe('PAYLOAD_TOO_LARGE');
+      expect(
+        (
+          await request(app)
+            .put(`/api/admin/athletes/${id}/photo`)
+            .set('Content-Type', 'image/jpeg')
+            .send(JPEG)
+        ).status
+      ).toBe(401);
+    });
   });
 
   describe('QR codes', () => {
