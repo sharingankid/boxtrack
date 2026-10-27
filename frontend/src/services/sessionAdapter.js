@@ -1,6 +1,6 @@
-import { cloneDemoSessions } from '../data/demoSessions.js'
+import { completeDemoWeek, weekMonday } from '../data/demoWeek.js'
 import { withoutDashes } from '../lib/format.js'
-import { addDays, parisNow } from '../lib/schedule.js'
+import { parisNow } from '../lib/schedule.js'
 import { apiClient } from './apiClient.js'
 
 // API mapping follows origin/V.0 API_CONTRACT.md at 666d977.
@@ -59,37 +59,21 @@ export function fromApi(session) {
     title: session.title || '',
   }
 }
-function initialDemo() {
-  const today = parisNow().date
-  const seeds = cloneDemoSessions()
-  return [0, 1, 2, 3, 4, 5, 6, 7, 8].map((index) => {
-    const session = structuredClone(seeds[index % seeds.length])
-    const start = index < 3 ? ['06:00', '12:30', '18:00'][index] : '18:00'
-    const end = index < 3 ? ['07:00', '13:30', '19:00'][index] : '19:00'
-    return {
-      ...session,
-      id: 201 + index,
-      session_date: addDays(today, index < 3 ? 0 : index - 2),
-      start_time: start,
-      end_time: end,
-      title: ['Force & conditionnement', 'Séance du midi', 'WOD du soir'][
-        index % 3
-      ],
-    }
-  })
-}
 function readDemo() {
-  const stored = localStorage.getItem(STORAGE_KEY)
-  if (stored) {
-    try {
-      const data = JSON.parse(stored)
-      if (Array.isArray(data)) return data
-    } catch {
-      /* Recreate damaged demo storage only. */
-    }
+  let data = []
+  try {
+    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY))
+    if (Array.isArray(stored)) data = stored
+  } catch {
+    /* Recreate damaged demo storage only. */
   }
-  const data = initialDemo()
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+  const today = parisNow().date
+  const weekKey = `${STORAGE_KEY}.week.${weekMonday(today)}`
+  if (!localStorage.getItem(weekKey)) {
+    data = completeDemoWeek(data, today)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
+    localStorage.setItem(weekKey, '1')
+  }
   return data
 }
 export function createSessionAdapter(mode) {
@@ -123,8 +107,13 @@ export function createSessionAdapter(mode) {
             s.session_date === form.session_date &&
             s.start_time === form.start_time,
         )
-      )
-        throw new Error('Une séance existe déjà à cette date et à cette heure.')
+      ) {
+        const error = new Error(
+          'Une séance existe déjà à cette date et à cette heure.',
+        )
+        error.status = 409
+        throw error
+      }
       if (id && !data.some((s) => String(s.id) === String(id)))
         throw new Error('Cette séance n’existe plus.')
       const saved = { ...toApiPayload(form), id: id ? Number(id) : Date.now() }
