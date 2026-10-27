@@ -28,6 +28,7 @@ const router = createBrowserRouter(
       <Route path="/screen" element={<ScreenPage />} />
       <Route path="/coach" element={<CoachLayout />}>
         <Route index element={<DashboardPage />} />
+        <Route path="upcoming" element={<DashboardPage />} />
         <Route path="sessions" element={<DashboardPage />} />
         <Route path="sessions/new" element={<EditorPage />} />
         <Route path="sessions/:id/edit" element={<EditorPage />} />

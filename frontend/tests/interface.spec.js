@@ -590,7 +590,7 @@ test('week navigation, selected-day creation and history search', async ({
   await expect(page.getByLabel('Date', { exact: true })).toHaveValue(
     addDays(today, 2),
   )
-  await page.getByRole('link', { name: 'Séances passées', exact: true }).click()
+  await page.getByRole('link', { name: 'Historique', exact: true }).click()
   const search = page.getByRole('searchbox', {
     name: 'Rechercher une séance passée',
   })
@@ -806,4 +806,26 @@ test('phone spotlight broadcasts the real TV with live clock, API updates and st
   await page.setViewportSize({ width: 1440, height: 900 })
   await expect(page.locator('.live-tv-embed')).toHaveCount(0)
   await expect(page.locator('.programme-brief-cards')).toBeVisible()
+})
+
+test('phone keeps the planning on the day and moves upcoming sessions to their own tab', async ({ page }) => {
+  await page.clock.setFixedTime(new Date(`${today}T06:30:00+02:00`))
+  await mock(page)
+  await login(page)
+  const tab = page.getByRole('link', { name: 'À venir', exact: true })
+  const row = (title) => page.locator('.planning-row', { hasText: title })
+  await expect(row('Prochaine programmation')).toBeHidden()
+  await expect(row('WOD du soir')).toBeVisible()
+  await tab.click()
+  await expect(page).toHaveURL(/\/coach\/upcoming$/)
+  await expect(page.getByRole('heading', { name: 'Prochaines séances', exact: true })).toHaveCount(1)
+  await expect(page.getByRole('heading', { name: /Demain/ })).toBeVisible()
+  await expect(row('Prochaine programmation')).toBeVisible()
+  await expect(row('WOD du soir')).toHaveCount(0)
+  await expect(tab).toHaveClass(/active/)
+  await noOverflow(page)
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await page.goto('/coach')
+  await expect(tab).toBeHidden()
+  await expect(row('Prochaine programmation')).toBeVisible()
 })
