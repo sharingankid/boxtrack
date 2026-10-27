@@ -68,6 +68,7 @@ export default function DashboardPage() {
   const now = useClock()
   const location = useLocation()
   const history = location.pathname === '/coach/sessions'
+  const upcomingView = location.pathname === '/coach/upcoming'
   const [selectedDate, setSelectedDate] = useState(null)
   const [search, setSearch] = useState('')
   const [deleting, setDeleting] = useState(null)
@@ -146,6 +147,66 @@ export default function DashboardPage() {
         }}
       />
     ))
+  const upcomingSection = (
+    <section className="planning-section upcoming-planning">
+      {!upcomingView && (
+        <div className="section-heading">
+          <h2>Prochaines séances</h2>
+          <Icon name="calendar" />
+        </div>
+      )}
+      {upcoming.length ? (
+        upcomingDays.map(([day, items]) => (
+          <section
+            className="upcoming-day"
+            key={day}
+            aria-labelledby={`upcoming-${day}`}
+          >
+            <div className="upcoming-day-heading">
+              <span className="upcoming-date-badge" aria-hidden="true">
+                <b>{Number(day.slice(-2))}</b>
+                <small>
+                  {formatDate(day, {
+                    weekday: undefined,
+                    day: undefined,
+                    month: 'short',
+                  })}
+                </small>
+              </span>
+              <h3 id={`upcoming-${day}`}>
+                {day === addDays(now.date, 1)
+                  ? 'Demain'
+                  : formatDate(day, {
+                      weekday: 'long',
+                      day: undefined,
+                      month: undefined,
+                    })}
+                <small>
+                  <time dateTime={day}>
+                    {formatDate(day, {
+                      weekday: undefined,
+                      year: 'numeric',
+                    })}
+                  </time>
+                </small>
+              </h3>
+              <span className="upcoming-day-count">
+                {items.length} séance{items.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            {rows(items)}
+          </section>
+        ))
+      ) : (
+        <p className="empty-inline">Aucune autre séance prévue.</p>
+      )}
+      <Link className="archive-link" to="/coach/sessions">
+        <Icon name="history" />
+        Reprendre une séance passée
+        <Icon name="arrow" />
+      </Link>
+    </section>
+  )
   return (
     <>
       <div className="coach-title">
@@ -154,11 +215,19 @@ export default function DashboardPage() {
             <span className="eyebrow-line" />
             {formatDate(now.date)}
           </p>
-          <h1>{history ? 'Séances passées' : 'Le planning'}</h1>
+          <h1>
+            {history
+              ? 'Séances passées'
+              : upcomingView
+                ? 'Prochaines séances'
+                : 'Le planning'}
+          </h1>
           <p className="page-subtitle">
             {history
               ? 'Retrouvez un entraînement. Préparez le suivant.'
-              : 'Votre salle. Votre programmation.'}
+              : upcomingView
+                ? 'Tout ce qui est programmé après aujourd’hui.'
+                : 'Votre salle. Votre programmation.'}
           </p>
         </div>
         <Link className="button primary" to="/coach/sessions/new">
@@ -194,7 +263,8 @@ export default function DashboardPage() {
           }
         />
       )}
-      {status !== 'loading' && !history && (
+      {status !== 'loading' && upcomingView && upcomingSection}
+      {status !== 'loading' && !history && !upcomingView && (
         <>
           <section
             className="live-planning"
@@ -434,62 +504,7 @@ export default function DashboardPage() {
                 )}
               </div>
             </section>
-            <section className="planning-section upcoming-planning">
-              <div className="section-heading">
-                <h2>Prochaines séances</h2>
-                <Icon name="calendar" />
-              </div>
-              {upcoming.length ? (
-                upcomingDays.map(([day, items]) => (
-                  <section
-                    className="upcoming-day"
-                    key={day}
-                    aria-labelledby={`upcoming-${day}`}
-                  >
-                    <div className="upcoming-day-heading">
-                      <span className="upcoming-date-badge" aria-hidden="true">
-                        <b>{Number(day.slice(-2))}</b>
-                        <small>
-                          {formatDate(day, {
-                            weekday: undefined,
-                            day: undefined,
-                            month: 'short',
-                          })}
-                        </small>
-                      </span>
-                      <h3 id={`upcoming-${day}`}>
-                        {day === addDays(now.date, 1)
-                          ? 'Demain'
-                          : formatDate(day, {
-                              weekday: 'long',
-                              day: undefined,
-                              month: undefined,
-                            })}
-                        <small>
-                          <time dateTime={day}>
-                            {formatDate(day, {
-                              weekday: undefined,
-                              year: 'numeric',
-                            })}
-                          </time>
-                        </small>
-                      </h3>
-                      <span className="upcoming-day-count">
-                        {items.length} séance{items.length > 1 ? 's' : ''}
-                      </span>
-                    </div>
-                    {rows(items)}
-                  </section>
-                ))
-              ) : (
-                <p className="empty-inline">Aucune autre séance prévue.</p>
-              )}
-              <Link className="archive-link" to="/coach/sessions">
-                <Icon name="history" />
-                Reprendre une séance passée
-                <Icon name="arrow" />
-              </Link>
-            </section>
+            {upcomingSection}
           </div>
         </>
       )}

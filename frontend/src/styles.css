@@ -3392,6 +3392,16 @@ progress::-webkit-progress-value {
   .programme-brief .programme-brief-cards, .programme-brief .programme-swipe-hint { display: none; }
 }
 
+/* On phones, upcoming sessions get their own tab so the planning stays focused on the day.
+   Five tabs leave no room for long labels, so the bar switches to short ones. */
+.coach-nav .nav-upcoming, .coach-nav .nav-short { display: none; }
+@media (max-width: 760px) {
+  .coach-nav .nav-upcoming { display: flex; }
+  .coach-nav .nav-short { display: inline; }
+  .coach-nav .nav-long { display: none; }
+  .planning-columns > .upcoming-planning { display: none; }
+}
+
 /* Gym equipment illustration: slow motion and a restrained orange accent. */
 .login-panel { background: radial-gradient(ellipse at 90% 65%, #ff792f0d, transparent 60%), #202220; }
 .login-barbell { width: 520px; right: -100px; color: var(--orange); opacity: .32; transform-origin: center; animation: login-barbell-float 10s ease-in-out infinite; }

@@ -56,13 +56,19 @@ export default function CoachLayout() {
           <Icon name="calendar" />
           <span>Planning</span>
         </NavLink>
+        <NavLink className="nav-upcoming" to="/coach/upcoming" end>
+          <Icon name="clock" />
+          <span>À venir</span>
+        </NavLink>
         <NavLink className="nav-create" to="/coach/sessions/new">
           <Icon name="plus" />
-          <span>Créer une séance</span>
+          <span className="nav-long">Créer une séance</span>
+          <span className="nav-short">Créer</span>
         </NavLink>
         <NavLink to="/coach/sessions" end>
           <Icon name="history" />
-          <span>Séances passées</span>
+          <span className="nav-long">Séances passées</span>
+          <span className="nav-short">Historique</span>
         </NavLink>
         <Link to="/screen" target="_blank" rel="noreferrer">
           <Icon name="screen" />
