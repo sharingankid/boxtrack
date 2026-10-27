@@ -15,6 +15,7 @@ import { formatDate, FORMAT_LABELS } from '../lib/format.js'
 import StatePanel from '../components/StatePanel.jsx'
 import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import Icon from '../components/Icon.jsx'
+import LiveTvEmbed from '../components/LiveTvEmbed.jsx'
 
 const phaseText = (value, fallback) =>
   value
@@ -67,6 +68,7 @@ export default function DashboardPage() {
   const now = useClock()
   const location = useLocation()
   const history = location.pathname === '/coach/sessions'
+  const upcomingView = location.pathname === '/coach/upcoming'
   const [selectedDate, setSelectedDate] = useState(null)
   const [search, setSearch] = useState('')
   const [deleting, setDeleting] = useState(null)
@@ -85,6 +87,12 @@ export default function DashboardPage() {
   )
   const upcoming = sortSessions(sessions).filter(
     (s) => s.session_date > now.date,
+  )
+  const upcomingDays = Object.entries(
+    upcoming.reduce((days, session) => {
+      ;(days[session.session_date] ||= []).push(session)
+      return days
+    }, {}),
   )
   const past = sortSessions(sessions)
     .filter((s) => sessionState(s, now) === 'past')
@@ -139,6 +147,66 @@ export default function DashboardPage() {
         }}
       />
     ))
+  const upcomingSection = (
+    <section className="planning-section upcoming-planning">
+      {!upcomingView && (
+        <div className="section-heading">
+          <h2>Prochaines séances</h2>
+          <Icon name="calendar" />
+        </div>
+      )}
+      {upcoming.length ? (
+        upcomingDays.map(([day, items]) => (
+          <section
+            className="upcoming-day"
+            key={day}
+            aria-labelledby={`upcoming-${day}`}
+          >
+            <div className="upcoming-day-heading">
+              <span className="upcoming-date-badge" aria-hidden="true">
+                <b>{Number(day.slice(-2))}</b>
+                <small>
+                  {formatDate(day, {
+                    weekday: undefined,
+                    day: undefined,
+                    month: 'short',
+                  })}
+                </small>
+              </span>
+              <h3 id={`upcoming-${day}`}>
+                {day === addDays(now.date, 1)
+                  ? 'Demain'
+                  : formatDate(day, {
+                      weekday: 'long',
+                      day: undefined,
+                      month: undefined,
+                    })}
+                <small>
+                  <time dateTime={day}>
+                    {formatDate(day, {
+                      weekday: undefined,
+                      year: 'numeric',
+                    })}
+                  </time>
+                </small>
+              </h3>
+              <span className="upcoming-day-count">
+                {items.length} séance{items.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            {rows(items)}
+          </section>
+        ))
+      ) : (
+        <p className="empty-inline">Aucune autre séance prévue.</p>
+      )}
+      <Link className="archive-link" to="/coach/sessions">
+        <Icon name="history" />
+        Reprendre une séance passée
+        <Icon name="arrow" />
+      </Link>
+    </section>
+  )
   return (
     <>
       <div className="coach-title">
@@ -147,11 +215,19 @@ export default function DashboardPage() {
             <span className="eyebrow-line" />
             {formatDate(now.date)}
           </p>
-          <h1>{history ? 'Séances passées' : 'Le planning'}</h1>
+          <h1>
+            {history
+              ? 'Séances passées'
+              : upcomingView
+                ? 'Prochaines séances'
+                : 'Le planning'}
+          </h1>
           <p className="page-subtitle">
             {history
               ? 'Retrouvez un entraînement. Préparez le suivant.'
-              : 'Votre salle. Votre programmation.'}
+              : upcomingView
+                ? 'Tout ce qui est programmé après aujourd’hui.'
+                : 'Votre salle. Votre programmation.'}
           </p>
         </div>
         <Link className="button primary" to="/coach/sessions/new">
@@ -187,7 +263,8 @@ export default function DashboardPage() {
           }
         />
       )}
-      {status !== 'loading' && !history && (
+      {status !== 'loading' && upcomingView && upcomingSection}
+      {status !== 'loading' && !history && !upcomingView && (
         <>
           <section
             className="live-planning"
@@ -293,76 +370,78 @@ export default function DashboardPage() {
               </Link>
             </div>
           </section>
-          {featured && (
-            <section
-              className="programme-brief"
-              aria-label="Programme à l’affiche"
-            >
-              <div className="programme-brief-heading">
-                <div>
-                  <p className="eyebrow">LA SÉANCE À L’AFFICHE</p>
-                  <h2>En un coup d’œil</h2>
-                </div>
-                <Link to="/screen" target="_blank" rel="noreferrer">
-                  <Icon name="screen" />
-                  Ouvrir la vue TV
-                  <Icon name="arrow" />
-                </Link>
+          <section
+            className={`programme-brief ${featured ? '' : 'has-no-session'}`}
+            aria-label="Programme à l’affiche"
+          >
+            <div className="programme-brief-heading">
+              <div>
+                <p className="eyebrow">LA SÉANCE À L’AFFICHE</p>
+                <h2>En un coup d’œil</h2>
               </div>
-              <div
-                className="programme-brief-cards"
-                tabIndex="0"
-                role="region"
-                aria-label="Étapes de la séance"
-              >
-                <div className="programme-brief-card">
-                  <strong>Échauffement</strong>
-                  <p>
-                    {phaseText(
-                      featured.warmup?.general,
-                      'À préciser par le coach',
-                    )}
-                  </p>
-                </div>
+              <Link to="/screen" target="_blank" rel="noreferrer">
+                <Icon name="screen" />
+                Ouvrir la vue TV
+                <Icon name="arrow" />
+              </Link>
+            </div>
+            <LiveTvEmbed />
+            {featured && (
+              <>
                 <div
-                  className={`programme-brief-card ${featured.skill_strength ? '' : 'is-skipped'}`}
+                  className="programme-brief-cards"
+                  tabIndex="0"
+                  role="region"
+                  aria-label="Étapes de la séance"
                 >
-                  <strong>
-                    {!featured.skill_strength
-                      ? 'Skill / Strength'
-                      : featured.skill_strength.kind === 'strength'
-                        ? 'Force'
-                        : 'Technique'}
-                  </strong>
-                  <p>
-                    {!featured.skill_strength
-                      ? 'Pas de bloc pour cette séance'
-                      : featured.skill_strength.movements?.[0]?.movement_name ||
-                        'À préciser par le coach'}
-                  </p>
+                  <div className="programme-brief-card">
+                    <strong>Échauffement</strong>
+                    <p>
+                      {phaseText(
+                        featured.warmup?.general,
+                        'À préciser par le coach',
+                      )}
+                    </p>
+                  </div>
+                  <div
+                    className={`programme-brief-card ${featured.skill_strength ? '' : 'is-skipped'}`}
+                  >
+                    <strong>
+                      {!featured.skill_strength
+                        ? 'Skill / Strength'
+                        : featured.skill_strength.kind === 'strength'
+                          ? 'Force'
+                          : 'Technique'}
+                    </strong>
+                    <p>
+                      {!featured.skill_strength
+                        ? 'Pas de bloc pour cette séance'
+                        : featured.skill_strength.movements?.[0]
+                            ?.movement_name || 'À préciser par le coach'}
+                    </p>
+                  </div>
+                  <div className="programme-brief-card is-wod">
+                    <strong>
+                      {FORMAT_LABELS[featured.wod?.format] || 'WOD'}
+                    </strong>
+                    <p>
+                      {featured.wod?.movements
+                        ?.map((item) => item.movement_name)
+                        .filter(Boolean)
+                        .join(' · ') || 'Mouvements à préciser'}
+                    </p>
+                  </div>
                 </div>
-                <div className="programme-brief-card is-wod">
-                  <strong>
-                    {FORMAT_LABELS[featured.wod?.format] || 'WOD'}
-                  </strong>
-                  <p>
-                    {featured.wod?.movements
-                      ?.map((item) => item.movement_name)
-                      .filter(Boolean)
-                      .join(' · ') || 'Mouvements à préciser'}
-                  </p>
-                </div>
-              </div>
-              <p className="programme-swipe-hint">
-                Glissez pour voir les trois étapes →
-              </p>
-            </section>
-          )}
+                <p className="programme-swipe-hint">
+                  Glissez pour voir les trois étapes →
+                </p>
+              </>
+            )}
+          </section>
           <div className="planning-columns">
             <section className="planning-section day-planning">
               <div className="section-heading">
                 <h2>Cette semaine</h2>
-                <span>7 jours / votre box</span>
               </div>
               <div
                 className="week-strip"
@@ -425,22 +504,7 @@ export default function DashboardPage() {
                 )}
               </div>
             </section>
-            <section className="planning-section upcoming-planning">
-              <div className="section-heading">
-                <h2>Prochaines séances</h2>
-                <Icon name="calendar" />
-              </div>
-              {upcoming.length ? (
-                rows(upcoming)
-              ) : (
-                <p className="empty-inline">Aucune autre séance prévue.</p>
-              )}
-              <Link className="archive-link" to="/coach/sessions">
-                <Icon name="history" />
-                Reprendre une séance passée
-                <Icon name="arrow" />
-              </Link>
-            </section>
+            {upcomingSection}
           </div>
         </>
       )}

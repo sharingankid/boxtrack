@@ -136,13 +136,13 @@ p {
   place-items: center;
   width: 40px;
   height: 40px;
-  background: var(--orange);
-  color: #101212;
-  transform: skew(-5deg);
+  background: transparent;
+  color: var(--orange);
 }
 .brand-mark .icon {
-  width: 28px;
-  height: 28px;
+  width: 36px;
+  height: 36px;
+  stroke-width: 2;
 }
 .brand strong,
 .brand small {
@@ -2659,7 +2659,8 @@ progress::-webkit-progress-value {
     height: 34px;
   }
   .brand-mark .icon {
-    width: 24px;
+    width: 30px;
+    height: 30px;
   }
   .brand strong {
     font-size: 1.4rem;
@@ -3344,3 +3345,85 @@ progress::-webkit-progress-value {
 @keyframes clock-tick { 50% { opacity: .55; } }
 @keyframes track-sheen { 0%, 35% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
 @keyframes tv-card-arrive { from { opacity: 0; transform: translateY(calc(.7 * var(--tvh))); } to { opacity: 1; transform: translateY(0); } }
+
+/* Programme generator sits beside the manual workflow and only fills a draft. */
+.session-generator { margin-bottom: 24px; border: 1px solid var(--line); border-top: 3px solid var(--orange); background: var(--surface, #181b1d); }
+.session-generator > summary { display: flex; align-items: center; gap: 14px; padding: 20px; cursor: pointer; list-style: none; }
+.session-generator > summary::-webkit-details-marker { display: none; }
+.session-generator > summary > .icon { color: var(--accent-text, #ff9867); flex-shrink: 0; }
+.session-generator summary strong, .session-generator summary small { display: block; }
+.session-generator summary small { margin-top: 4px; color: var(--muted, #aaa); font-weight: 400; }
+.generator-toggle { margin-left: auto; font-size: 1.5rem; }
+.session-generator[open] .generator-toggle { transform: rotate(45deg); }
+.generator-body { padding: 0 20px 20px; }
+.generator-body fieldset { border: 0; padding: 0; margin: 0; min-width: 0; }
+.generator-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.generator-body label { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.generator-body label small, .generator-schedule { color: var(--muted, #aaa); font-size: .82rem; }
+.generator-body .generator-equipment { margin: 8px 0 18px; }
+.generator-equipment legend { font-weight: 700; }
+.generator-equipment p { font-size: .85rem; margin: 8px 0 12px; }
+.generator-equipment > div { display: flex; flex-wrap: wrap; gap: 10px; }
+.generator-equipment label { flex-direction: row; align-items: center; gap: 8px; border: 1px solid var(--line); padding: 9px 12px; margin: 0; cursor: pointer; }
+.generator-equipment input { width: 16px; height: 16px; accent-color: #ff7335; }
+.generator-proposal { border-top: 1px solid var(--line); margin-top: 24px; padding-top: 24px; }
+.generator-proposal h3 { font-size: 1.6rem; margin: 8px 0; }
+.generator-proposal h4 { color: var(--accent-text, #ff9867); margin: 20px 0 8px; }
+.generator-proposal p, .generator-proposal li { line-height: 1.6; overflow-wrap: anywhere; }
+.generator-proposal ul { padding-left: 20px; }
+.generator-notes { white-space: pre-line; }
+@media (max-width: 600px) { .generator-grid { grid-template-columns: minmax(0, 1fr); } .generator-body, .session-generator > summary { padding-inline: 16px; } .generator-proposal .button { width: 100%; } }
+
+/* Save feedback remains in view even at the end of a long generated programme. */
+.editor-save-bar { flex-wrap: wrap; }
+.save-bar-feedback { flex: 0 0 100%; margin: 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); color: var(--accent-text); font-size: .82rem; line-height: 1.4; }
+
+/* On phones, the spotlight embeds /screen itself at the broadcast resolution. */
+.programme-brief.has-no-session { display: none; }
+.live-tv-embed { min-width: 0; }
+.live-tv-status { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; color: var(--accent-text); font-size: .65rem; font-weight: 700; text-transform: uppercase; letter-spacing: .12em; }
+.live-tv-status > span:last-child { margin-left: auto; color: var(--muted); }
+.live-tv-status .status-dot { background: var(--orange); }
+.live-tv-viewport { position: relative; width: 100%; overflow: hidden; background: #0b0d0e; box-shadow: 0 0 0 1px var(--line); }
+.live-tv-viewport iframe { position: absolute; top: 0; left: 0; display: block; max-width: none; border: 0; transform-origin: top left; }
+.live-tv-embed > p { margin: 10px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.5; }
+@media (max-width: 760px) {
+  .programme-brief.has-no-session { display: block; }
+  .programme-brief .programme-brief-cards, .programme-brief .programme-swipe-hint { display: none; }
+}
+
+/* On phones, upcoming sessions get their own tab so the planning stays focused on the day.
+   Five tabs leave no room for long labels, so the bar switches to short ones. */
+.coach-nav .nav-upcoming, .coach-nav .nav-short { display: none; }
+@media (max-width: 760px) {
+  .coach-nav .nav-upcoming { display: flex; }
+  .coach-nav .nav-short { display: inline; }
+  .coach-nav .nav-long { display: none; }
+  .planning-columns > .upcoming-planning { display: none; }
+}
+
+/* Gym equipment illustration: slow motion and a restrained orange accent. */
+.login-panel { background: radial-gradient(ellipse at 90% 65%, #ff792f0d, transparent 60%), #202220; }
+.login-barbell { width: 520px; right: -100px; color: var(--orange); opacity: .32; transform-origin: center; animation: login-barbell-float 10s ease-in-out infinite; }
+.login-barbell-orbit { transform-origin: 280px 130px; animation: login-orbit 70s linear infinite; }
+.login-barbell-shine { animation: login-steel-shine 8s linear infinite; }
+.login-art { animation: content-enter .7s var(--ease) both; }
+.training-track > i { background: var(--orange); animation: login-track-pulse 3s ease-in-out infinite; }
+.training-track > i:last-of-type { animation-delay: 1.5s; }
+@keyframes login-barbell-float { 0%, 100% { transform: translateY(0) rotate(-25deg); } 50% { transform: translateY(-10px) rotate(-21deg); } }
+@keyframes login-orbit { to { transform: rotate(360deg); } }
+@keyframes login-steel-shine { to { stroke-dashoffset: -260; } }
+@keyframes login-track-pulse { 50% { opacity: .35; transform: scaleX(.6); } }
+@media (max-width: 600px) { .login-barbell { width: 300px; right: -65px; bottom: 3%; opacity: .3; } }
+
+/* Every upcoming date gets a visible separator and its own group of sessions. */
+.upcoming-day { padding-top: 20px; }
+.upcoming-day + .upcoming-day { margin-top: 18px; border-top: 2px solid var(--line); }
+.upcoming-day-heading { display: flex; align-items: center; gap: 12px; padding: 12px; background: var(--soft); border-left: 3px solid var(--orange); }
+.upcoming-date-badge { flex-shrink: 0; display: grid; justify-items: center; min-width: 40px; color: var(--accent-text); }
+.upcoming-date-badge b { font: 700 1.8rem/1 'Barlow Condensed', sans-serif; }
+.upcoming-date-badge small { margin-top: 3px; font-size: .6rem; text-transform: uppercase; }
+.upcoming-day-heading h3 { margin: 0; font-size: .9rem; text-transform: capitalize; }
+.upcoming-day-heading h3 small { display: block; margin-top: 5px; font-size: .65rem; font-weight: 400; color: var(--muted); }
+.upcoming-day-count { margin-left: auto; color: var(--muted); font-size: .63rem; white-space: nowrap; }
+.upcoming-day .planning-description > p:last-child { display: none; }
