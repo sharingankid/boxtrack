@@ -24,7 +24,9 @@ function errorHandler(err, req, res, next) {
     23514: 'A field violates a business rule (e.g. end_time must be after start_time)',
   };
   if (err.code in CLIENT_FAULT_PG_CODES) {
-    return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: CLIENT_FAULT_PG_CODES[err.code] } });
+    return res
+      .status(400)
+      .json({ error: { code: 'VALIDATION_ERROR', message: CLIENT_FAULT_PG_CODES[err.code] } });
   }
 
   console.error(err);
