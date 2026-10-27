@@ -18,6 +18,7 @@ import ConfirmDialog from '../components/ConfirmDialog.jsx'
 import StatePanel from '../components/StatePanel.jsx'
 import SessionPreview from '../components/SessionPreview.jsx'
 import TvPreviewDialog from '../components/TvPreviewDialog.jsx'
+import SessionGenerator from '../components/SessionGenerator.jsx'
 
 const blankMovement = () => ({
   movement_name: '',
@@ -398,9 +399,14 @@ export default function EditorPage() {
         },
       })
     } catch (err) {
+      if (err.status === 409) {
+        setErrors(current => ({ ...current, schedule: 'Choisissez une autre date ou une autre heure de début : une séance occupe déjà ce créneau.' }))
+        setStep(0)
+        document.getElementById('section-0')?.parentElement.scrollIntoView({ block: 'start' })
+      }
       setMessage(
         err.status === 409
-          ? 'Ce créneau est déjà occupé. Choisissez une autre heure.'
+          ? 'Ce créneau est déjà occupé. Votre brouillon est conservé ; changez la date ou l’heure de début.'
           : err.status === 401
             ? 'Reconnectez-vous. Votre brouillon est conservé.'
             : err.message === 'Failed to fetch'
@@ -463,11 +469,6 @@ export default function EditorPage() {
           </h1>
         </div>
       </div>
-      {message && (
-        <p className="notice" role="alert">
-          {message}
-        </p>
-      )}
       <datalist id="movement-suggestions">
         {MOVEMENT_SUGGESTIONS.map((name) => (
           <option key={name} value={name} />
@@ -495,6 +496,12 @@ export default function EditorPage() {
       </aside>
       <div className="editor-workspace">
         <div className="editor-compose">
+          <SessionGenerator form={form} disabled={saving} onApply={proposal => {
+            setForm(current => ({ ...current, ...proposal }))
+            setErrors({})
+            setStep(4)
+            setMessage('Proposition appliquée au brouillon. Relisez la séance et les horaires avant d’enregistrer.')
+          }} />
           <div className="editor-progress">
             <p>
               <span>CONSTRUIRE LA SÉANCE</span>
@@ -836,6 +843,7 @@ export default function EditorPage() {
               )}
             </fieldset>
             <div className="editor-save-bar">
+              {message && <p className="save-bar-feedback" role="alert">{message}</p>}
               <span className="save-bar-note">
                 <Icon name="check" />
                 {saving
