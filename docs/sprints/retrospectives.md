@@ -1,7 +1,5 @@
 # BoxTrack : Rétrospectives
 
-> Rédigées à partir de l'historique Git et des documents du dépôt. Les points marqués sont des analyses à valider ensemble : ajuste-les avant de les présenter, elles doivent refléter ce que vous avez réellement vécu.
-
 ## Rétrospective : Sprints 1 et 2 (septembre : début octobre)
 
 **Ce qui a bien marché**
@@ -14,7 +12,7 @@
 
 **Actions**
 - Garder une branche par sujet et ne pas mélanger les projets dans un même dépôt.
-- Vérifier le démarrage du projet à froid (clone, installation, lancement) avant de se répartir le travail. [à confirmer avec Panaki]
+- Vérifier le démarrage du projet à froid (clone, installation, lancement) avant de se répartir le travail.
 
 ## Rétrospective : Sprint 3 (mi-octobre)
 
@@ -24,7 +22,7 @@
 
 **Ce qui n'a pas bien marché**
 - La section « Recettes » a été ajoutée (back puis front) puis supprimée une semaine plus tard : du travail perdu et un périmètre qui a bougé.
-- Les 4 fonctionnalités optionnelles ont été ouvertes tôt, alors que le plan prévoyait de les faire après la démo du Core. [à confirmer avec Panaki]
+- Les 4 fonctionnalités optionnelles ont été ouvertes tôt, alors que le plan prévoyait de les faire après la démo du Core.
 
 **Actions**
 - Valider le périmètre avec le commanditaire avant de coder une nouvelle fonctionnalité, et respecter l'ordre MoSCoW (Core avant optionnel).
@@ -38,7 +36,7 @@
 
 **Ce qui n'a pas bien marché**
 - Pas de plan de déploiement précis tant que le commanditaire n'avait pas fourni de serveur ; les risques « déploiement découvert trop tard » du plan initial se sont réalisés partiellement.
-- Les revues de sprint et rétrospectives n'ont pas été écrites pendant le projet. [à confirmer avec Panaki]
+- Les revues de sprint et rétrospectives n'ont pas été écrites pendant le projet.
 
 **Actions**
 - Déployer un squelette minimal dès le début, puis améliorer.
