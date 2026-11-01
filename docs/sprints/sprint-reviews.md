@@ -1,7 +1,5 @@
 # BoxTrack : Sprint Reviews
 
-> Document reconstitué à partir de l'historique Git du dépôt (commits datés), puisque les revues n'ont pas été rédigées au fil de l'eau. Les périodes correspondent à l'activité réelle ; elles ne coïncident pas exactement avec les semaines du plan initial (voir `docs/02-project-charter.md`).
-
 ## Sprint 1 : Cadrage et documentation (du 10 au 29 septembre)
 
 **Objectif** : cadrer le MVP, choisir le périmètre et poser l'architecture.
