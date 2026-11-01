@@ -1,7 +1,5 @@
 # BoxTrack : Suivi des bugs
 
-> Journal reconstitué à partir des commits de correction du dépôt. Un bug = un problème réel identifié puis corrigé. Les identifiants de commit permettent de retrouver le correctif (`git show <hash>`).
-
 | ID | Date | Composant | Problème | Gravité | Statut | Correctif |
 |---|---|---|---|---|---|---|
 | BUG-01 | 05/10 | Back-end | Une date ne pouvait contenir qu'une séance, alors que la salle en programme plusieurs par jour | Haute | Corrigé | `8a140f8` : unicité sur (date, créneau) |
