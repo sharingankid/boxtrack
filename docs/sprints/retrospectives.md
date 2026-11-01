@@ -1,6 +1,6 @@
 # BoxTrack : Rétrospectives
 
-> Rédigées à partir de l'historique Git et des documents du dépôt. Les points marqués **[à confirmer avec Panaki]** sont des analyses à valider ensemble : ajuste-les avant de les présenter, elles doivent refléter ce que vous avez réellement vécu.
+> Rédigées à partir de l'historique Git et des documents du dépôt. Les points marqués sont des analyses à valider ensemble : ajuste-les avant de les présenter, elles doivent refléter ce que vous avez réellement vécu.
 
 ## Rétrospective : Sprints 1 et 2 (septembre : début octobre)
 
