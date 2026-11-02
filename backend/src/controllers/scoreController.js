@@ -17,6 +17,14 @@ async function create(req, res, next) {
   }
 }
 
+async function createMany(req, res, next) {
+  try {
+    res.status(200).json(await scoreService.recordScores(req.params.id, req.body, req.user.id));
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function remove(req, res, next) {
   try {
     await scoreService.remove(req.params.id);
@@ -26,4 +34,4 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { getLeaderboard, create, remove };
+module.exports = { getLeaderboard, create, createMany, remove };

@@ -41,7 +41,11 @@ async function login(email, password) {
   const expiresAt = new Date(Date.now() + SESSION_TTL_MS);
   await sessionModel.create({ userId: user.id, tokenHash: hashToken(token), expiresAt });
 
-  return { token, user: { id: user.id, email: user.email, role: user.role } };
+  return {
+    token,
+    user: { id: user.id, email: user.email, role: user.role },
+    expiresAt,
+  };
 }
 
 async function logout(token) {
@@ -56,4 +60,19 @@ async function verifyToken(token) {
   return { id: session.user_id, email: session.email, role: session.role };
 }
 
-module.exports = { login, logout, verifyToken, normalizeEmail };
+// Same check as verifyToken, plus the real server-side expiry - lets the
+// front-end confirm a token restored from storage is still valid (it may
+// have been revoked by a logout elsewhere or a password reset) instead of
+// trusting its own locally computed expiry.
+async function getSession(token) {
+  const session = await sessionModel.findValidByTokenHash(hashToken(token));
+  if (!session) {
+    throw new ApiError(401, 'UNAUTHENTICATED', 'Invalid or expired session');
+  }
+  return {
+    user: { id: session.user_id, email: session.email, role: session.role },
+    expiresAt: session.expires_at,
+  };
+}
+
+module.exports = { login, logout, verifyToken, getSession, normalizeEmail };
