@@ -124,7 +124,7 @@ Returned by `GET /wods/today`, `GET /wods/tv-now` (nested under `current`/`next`
 | `skill_strength.kind` | `"skill"` \| `"strength"` | Required if `skill_strength` is sent. |
 | `skill_strength.instructions` | string \| null | |
 | `skill_strength.movements` | array of `{movement_name, detail}` | `movement_name` required, `detail` free text (charges/series, e.g. `"5x5 @ 80kg"`). |
-| `wod` | object \| null | Optional block, same idea as `skill_strength`. |
+| `wod` | object \| null | Optional block, same idea as `skill_strength`. If sent, needs at least one movement **or** a `duration_or_target` - a format with neither is rejected (`400 VALIDATION_ERROR`), since that isn't a workout anyone could actually do. |
 | `wod.format` | `"AMRAP"` \| `"FOR_TIME"` \| `"EMOM"` \| `"TABATA"` \| `"CHIPPER"` \| `"STRENGTH"` | Required if `wod` is sent. |
 | `wod.duration_or_target` | string \| null | Free text, e.g. `"20 min"`, `"21-15-9"`. |
 | `wod.notes` | string \| null | Coach remarks. |
@@ -197,20 +197,26 @@ place. See `wodService.getTvState()`.
 This endpoint always returns `200` - an empty day is a normal state (`current: null, next: null,
 remaining: []`), not an error.
 
-### `GET /api/wods?from=YYYY-MM-DD&to=YYYY-MM-DD` - public
+### `GET /api/wods?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=&offset=` - public
 
-Both query params optional (omit both for full history). **200**, summaries only (not the full
-nested shape - fetch `/wods/:id` for detail):
+All four query params optional (omit `from`/`to` for full history). **200**, summaries only (not
+the full nested shape - fetch `/wods/:id` for detail):
 
 ```json
 { "wods": [ { "id": 8, "session_date": "2026-10-12", "start_time": "18:00", "end_time": "19:00", "title": null, "format": "AMRAP" } ] }
 ```
 
 `format` is `null` if the coach hasn't filled in the WOD block yet. Sorted newest date first, then
-by `start_time`.
+by `start_time`. **The response shape is unchanged by pagination** - `{ "wods": [...] }` only,
+no `total`/`has_more` - fetch one page past the last to know if there's more.
+
+**Pagination:** `limit` defaults to `50`, capped at `100` regardless of what's requested (a public,
+unauthenticated endpoint can't be made to pull the whole history in one call). `offset` defaults to
+`0`. Both must be non-negative integers if sent.
 
 **Errors:** `400 VALIDATION_ERROR` if `from`/`to` are present but not real `YYYY-MM-DD` calendar
-dates (`2026-02-31` is rejected), or if `from` is after `to`.
+dates (`2026-02-31` is rejected), if `from` is after `to`, or if `limit`/`offset` aren't
+non-negative integers (`limit=0` is also rejected - use a real page size).
 
 ### `GET /api/wods/:id` - public
 
@@ -241,7 +247,8 @@ the rest via `PUT` later):
 - `400 VALIDATION_ERROR` - missing `session_date`/`start_time`/`end_time`; `session_date` not a
   valid `YYYY-MM-DD` date; `start_time`/`end_time` not a valid `HH:mm` time; `end_time` at or
   before `start_time`; invalid `skill_strength.kind` (must be `skill`/`strength`); invalid
-  `wod.format` (must be one of the 6); a movement with no `movement_name`.
+  `wod.format` (must be one of the 6); a movement with no `movement_name`; a `wod` with a format
+  but no movements and no `duration_or_target`.
 - `409 DUPLICATE_SESSION` - a session already exists for that exact `(session_date, start_time)`
   pair. **Not** returned just for reusing a date with a different `start_time`.
 - `401 UNAUTHENTICATED` - missing/invalid/expired token.
@@ -406,6 +413,13 @@ version accepted bad data:
 - QR code `url` and athlete `photo_url` must be `http(s)`.
 - `active` (athletes, announcements) must be a JSON boolean, not `"false"`.
 - New scores for a deactivated athlete → `400`.
+
+**Content requirement and pagination on `GET /wods` (November 2026).** Front-end impact, if any,
+is a `400` where the previous version accepted an empty `wod` block:
+- A `wod` block with a `format` but no movements and no `duration_or_target` → `400
+  VALIDATION_ERROR`, on both `POST` and `PUT /admin/wods/:id`.
+- `GET /wods` accepts `limit`/`offset`; without them it now returns at most `50` sessions instead
+  of the whole table. Response shape unchanged (`{ "wods": [...] }`).
 - Leaderboard ties now share a rank (was: different ranks by insertion order).
 
 **Recipes/Spoonacular removed entirely.** Every `/recipes` and `/admin/recipes` route, the Recipe
