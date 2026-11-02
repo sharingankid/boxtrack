@@ -52,7 +52,12 @@ export const apiClient = {
     }),
   tvNow: () => request('/wods/tv-now'),
   today: () => request('/wods/today').then((data) => data.wods),
-  history: () => request('/wods').then((data) => data.wods),
+  history: (params = {}) => {
+    const query = new URLSearchParams(
+      Object.entries(params).filter(([, value]) => value !== undefined),
+    ).toString()
+    return request(`/wods${query ? `?${query}` : ''}`).then((data) => data.wods)
+  },
   detail: (id) => request(`/wods/${id}`).then((data) => data.wod),
   create: (session, token) =>
     request('/admin/wods', {
