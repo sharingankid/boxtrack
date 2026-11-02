@@ -117,19 +117,35 @@ CREATE TABLE athletes (
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- A photo taken from the coach's phone, stored in the database rather than
+-- on disk: hosting providers' disks (Render, Railway) are wiped on every
+-- deploy. 1:1 with athletes, in its own table so listing athletes never
+-- loads image bytes. An external `athletes.photo_url` still works; an
+-- uploaded photo takes precedence (see athleteModel.js).
+CREATE TABLE athlete_photos (
+    athlete_id   INTEGER PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
+    content_type TEXT NOT NULL CHECK (content_type IN ('image/jpeg', 'image/png', 'image/webp')),
+    data         BYTEA NOT NULL,
+    updated_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- One score per athlete per WOD. `result_value` is always numeric so the
--- leaderboard can `ORDER BY` it directly - the coach enters a time as
--- MM:SS client-side, converted to seconds before it reaches the API (see
--- scoreService.js); every other format is a plain number (reps, rounds,
--- kg). Which direction counts as "better" is derived from the WOD's own
--- format (ascending for time-based formats, descending otherwise), not
--- stored per-score, so it can never drift from the WOD it belongs to.
+-- leaderboard can `ORDER BY` it directly: seconds for a time-based WOD
+-- (FOR_TIME, CHIPPER), completed rounds for an AMRAP, otherwise a plain
+-- number (reps, kg). `extra_reps` is the AMRAP's "+ reps" past the last
+-- full round (8 rds + 12 -> result_value 8, extra_reps 12), the
+-- tie-breaker between two athletes on the same round count; NULL for
+-- every other format. Which direction counts as "better" is derived from
+-- the WOD's own format (ascending for time-based formats, descending
+-- otherwise), not stored per-score, so it can never drift from the WOD it
+-- belongs to.
 CREATE TABLE scores (
     id           SERIAL PRIMARY KEY,
     wod_id       INTEGER NOT NULL REFERENCES wods(id) ON DELETE CASCADE,
     athlete_id   INTEGER NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
     category     TEXT NOT NULL CHECK (category IN ('RX', 'Scaled', 'Modified')),
     result_value NUMERIC NOT NULL CHECK (result_value >= 0),
+    extra_reps   INTEGER CHECK (extra_reps >= 0),
     recorded_by  INTEGER NOT NULL REFERENCES users(id),
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -140,11 +156,15 @@ CREATE INDEX idx_scores_wod_id ON scores(wod_id);
 
 -- Owner-published announcements (events, closures, schedule changes...).
 -- `active` lets the coach pull one down without deleting its history.
+-- `ends_on` (optional, Europe/Paris date) takes it off the public views
+-- automatically once that day is over - "closed on November 1st" doesn't
+-- stay on the TV until someone remembers to remove it.
 CREATE TABLE announcements (
     id         SERIAL PRIMARY KEY,
     title      TEXT NOT NULL,
     body       TEXT,
     active     BOOLEAN NOT NULL DEFAULT true,
+    ends_on    DATE,
     created_by INTEGER NOT NULL REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -161,5 +181,18 @@ CREATE TABLE qr_codes (
     created_by  INTEGER NOT NULL REFERENCES users(id),
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+-- Which db/migrations/ files this database already reflects - read by
+-- `npm run db:migrate` (scripts/dbMigrate.js). A fresh install from this
+-- file is already at the latest shape, so every migration is recorded as
+-- applied here. Adding a migration means adding its name below too.
+CREATE TABLE schema_migrations (
+    name       TEXT PRIMARY KEY,
+    applied_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO schema_migrations (name) VALUES
+    ('001_real_schedules_and_remove_recipes.sql'),
+    ('002_score_extra_reps_photos_announcement_end.sql');
 
 COMMIT;

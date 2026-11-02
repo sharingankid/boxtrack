@@ -6,21 +6,32 @@ function assemble(row) {
     title: row.title,
     body: row.body,
     active: row.active,
+    ends_on: row.ends_on,
     created_at: row.created_at,
     updated_at: row.updated_at,
   };
 }
 
-async function list({ activeOnly } = {}) {
-  const where = activeOnly ? 'WHERE active = true' : '';
-  const { rows } = await pool.query(`SELECT * FROM announcements ${where} ORDER BY created_at DESC`);
+// `visibleOn` (YYYY-MM-DD, the box's today): active, and not past its
+// ends_on. Without it, every announcement - the coach's admin list.
+async function list({ visibleOn } = {}) {
+  const where = visibleOn ? 'WHERE active = true AND (ends_on IS NULL OR ends_on >= $1)' : '';
+  const { rows } = await pool.query(
+    `SELECT * FROM announcements ${where} ORDER BY created_at DESC`,
+    visibleOn ? [visibleOn] : []
+  );
   return rows.map(assemble);
+}
+
+async function findById(id) {
+  const { rows } = await pool.query('SELECT * FROM announcements WHERE id = $1', [id]);
+  return rows[0] ? assemble(rows[0]) : null;
 }
 
 async function create(data, userId) {
   const { rows } = await pool.query(
-    `INSERT INTO announcements (title, body, created_by) VALUES ($1, $2, $3) RETURNING *`,
-    [data.title, data.body || null, userId]
+    `INSERT INTO announcements (title, body, ends_on, created_by) VALUES ($1, $2, $3, $4) RETURNING *`,
+    [data.title, data.body || null, data.ends_on || null, userId]
   );
   return assemble(rows[0]);
 }
@@ -40,6 +51,10 @@ async function update(id, data) {
     values.push(data.active);
     fields.push(`active = $${values.length}`);
   }
+  if (data.ends_on !== undefined) {
+    values.push(data.ends_on || null);
+    fields.push(`ends_on = $${values.length}`);
+  }
 
   values.push(id);
   const setClause = fields.length ? `${fields.join(', ')}, updated_at = now()` : 'updated_at = now()';
@@ -55,4 +70,4 @@ async function remove(id) {
   return rowCount > 0;
 }
 
-module.exports = { list, create, update, remove };
+module.exports = { list, findById, create, update, remove };

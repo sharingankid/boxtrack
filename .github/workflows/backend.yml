@@ -52,6 +52,11 @@ jobs:
       - name: Create the schema on the CI database
         run: npm run db:setup
 
+      # Must be a no-op on a fresh schema: fails if schema.sql forgot to
+      # record a migration it already includes.
+      - name: Migrations are up to date
+        run: npm run db:migrate | tee /dev/stderr | grep -q 'Database is up to date.'
+
       - name: Integration tests (real Postgres)
         run: |
           echo "DATABASE_URL=$DATABASE_URL" > .env.test

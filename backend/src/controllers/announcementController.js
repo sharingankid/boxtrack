@@ -8,6 +8,14 @@ async function listPublic(req, res, next) {
   }
 }
 
+async function getPublic(req, res, next) {
+  try {
+    res.status(200).json({ announcement: await announcementService.getPublic(req.params.id) });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function listAll(req, res, next) {
   try {
     res.status(200).json({ announcements: await announcementService.listAll() });
@@ -43,4 +51,4 @@ async function remove(req, res, next) {
   }
 }
 
-module.exports = { listPublic, listAll, create, update, remove };
+module.exports = { listPublic, getPublic, listAll, create, update, remove };
