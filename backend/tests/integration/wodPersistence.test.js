@@ -186,11 +186,21 @@ describe('WOD persistence', () => {
     await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: todayIso, start_time: '18:00', end_time: '19:00', wod: { format: 'AMRAP' } });
+      .send({
+        session_date: todayIso,
+        start_time: '18:00',
+        end_time: '19:00',
+        wod: { format: 'AMRAP', duration_or_target: '20 min' },
+      });
     await request(app)
       .post('/api/admin/wods')
       .set('Authorization', `Bearer ${token}`)
-      .send({ session_date: todayIso, start_time: '06:00', end_time: '07:00', wod: { format: 'EMOM' } });
+      .send({
+        session_date: todayIso,
+        start_time: '06:00',
+        end_time: '07:00',
+        wod: { format: 'EMOM', duration_or_target: '10 min' },
+      });
 
     const res = await request(app).get('/api/wods/today');
     expect(res.status).toBe(200);

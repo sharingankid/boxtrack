@@ -11,6 +11,12 @@ function errorHandler(err, req, res, next) {
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Malformed JSON body' } });
   }
+  // Same for a body over the parser's limit (100 KB JSON, 2 MB photo).
+  if (err.type === 'entity.too.large') {
+    return res
+      .status(413)
+      .json({ error: { code: 'PAYLOAD_TOO_LARGE', message: 'Request body is too large' } });
+  }
 
   // Safety net: a handful of Postgres error codes are always the client's
   // fault (missing required field, malformed date/number) - surface them as

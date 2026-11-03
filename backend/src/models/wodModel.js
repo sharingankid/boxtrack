@@ -41,7 +41,7 @@ async function findById(id) {
   return fetchFullWod(pool, id);
 }
 
-async function listSummaries({ from, to }) {
+async function listSummaries({ from, to, limit, offset }) {
   const conditions = [];
   const values = [];
   if (from) {
@@ -54,12 +54,18 @@ async function listSummaries({ from, to }) {
   }
   const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
+  values.push(limit);
+  const limitClause = `LIMIT $${values.length}`;
+  values.push(offset);
+  const offsetClause = `OFFSET $${values.length}`;
+
   const { rows } = await pool.query(
     `SELECT wods.id, wods.session_date, wods.start_time, wods.end_time, wods.title, wod_blocks.format
      FROM wods
      LEFT JOIN wod_blocks ON wod_blocks.wod_id = wods.id
      ${where}
-     ORDER BY wods.session_date DESC, wods.start_time`,
+     ORDER BY wods.session_date DESC, wods.start_time
+     ${limitClause} ${offsetClause}`,
     values
   );
   return rows.map((row) => ({

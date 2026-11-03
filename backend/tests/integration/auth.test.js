@@ -78,4 +78,27 @@ describe('Auth', () => {
     const res = await request(app).post('/api/auth/logout');
     expect(res.status).toBe(401);
   });
+
+  it('returns the server-side expiry on login and on GET /auth/me, 401 after logout', async () => {
+    const loginRes = await request(app)
+      .post('/api/auth/login')
+      .send({ email: TEST_COACH_EMAIL, password: TEST_PASSWORD });
+    const { token, expires_at: expiresAt } = loginRes.body;
+    const ttl = new Date(expiresAt).getTime() - Date.now();
+    expect(ttl).toBeGreaterThan(6.9 * 24 * 3600 * 1000);
+    expect(ttl).toBeLessThanOrEqual(7 * 24 * 3600 * 1000);
+
+    const meRes = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+    expect(meRes.status).toBe(200);
+    expect(meRes.body.user).toMatchObject({ email: TEST_COACH_EMAIL, role: 'coach' });
+    expect(new Date(meRes.body.expires_at).getTime()).toBe(new Date(expiresAt).getTime());
+
+    await request(app).post('/api/auth/logout').set('Authorization', `Bearer ${token}`);
+    const afterLogout = await request(app).get('/api/auth/me').set('Authorization', `Bearer ${token}`);
+    expect(afterLogout.status).toBe(401);
+  });
+
+  it('rejects GET /auth/me without a token', async () => {
+    expect((await request(app).get('/api/auth/me')).status).toBe(401);
+  });
 });

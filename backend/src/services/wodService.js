@@ -1,6 +1,7 @@
 const wodModel = require('../models/wodModel');
 const ApiError = require('../utils/ApiError');
 const { assertValidId, isValidIsoDate } = require('../utils/validators');
+const { todayIsoDate, nowHoursMinutes } = require('../utils/boxTime');
 
 const VALID_FORMATS = ['AMRAP', 'FOR_TIME', 'EMOM', 'TABATA', 'CHIPPER', 'STRENGTH'];
 const VALID_KINDS = ['skill', 'strength'];
@@ -63,28 +64,21 @@ function assertValidMovements(movements, label) {
   });
 }
 
-// BoxTrack only runs for CrossFit LAB (Toulouse), so "today" and "now" must
-// follow Europe/Paris wall-clock time, not UTC or the server's local time -
-// otherwise /wods/today and the TV "current session" logic drift by 1-2h.
-const TODAY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Europe/Paris',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-});
-const TIME_FORMATTER = new Intl.DateTimeFormat('en-GB', {
-  timeZone: 'Europe/Paris',
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
-
-function todayIsoDate() {
-  return TODAY_FORMATTER.format(new Date());
-}
-
-function nowHoursMinutes() {
-  return TIME_FORMATTER.format(new Date());
+// A `wod` block with a format but nothing else isn't a workout a coach or
+// athlete can actually do - require at least one movement or a stated
+// target (e.g. "Max Clean & Jerk" with no movement list is fine; an empty
+// block with just a format is not).
+function assertWodHasContent(wod) {
+  if (!wod) return;
+  const hasMovement = Array.isArray(wod.movements) && wod.movements.some((m) => m?.movement_name?.trim());
+  const hasTarget = typeof wod.duration_or_target === 'string' && wod.duration_or_target.trim();
+  if (!hasMovement && !hasTarget) {
+    throw new ApiError(
+      400,
+      'VALIDATION_ERROR',
+      'wod must have at least one movement or a duration_or_target'
+    );
+  }
 }
 
 // A date can have more than one session (different schedules) - always
@@ -126,13 +120,34 @@ async function getById(id) {
   return wod;
 }
 
-async function list({ from, to }) {
+const DEFAULT_PAGE_SIZE = 50;
+const MAX_PAGE_SIZE = 100;
+const INT_RE = /^\d+$/;
+
+// `limit`/`offset` arrive as query-string text (or undefined). Capped at
+// MAX_PAGE_SIZE regardless of what's requested, so a public, unauthenticated
+// endpoint can't be made to pull the whole history in one response.
+function assertValidPagination(limit, offset) {
+  if (limit !== undefined && (!INT_RE.test(String(limit)) || Number(limit) < 1)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'limit must be a positive integer');
+  }
+  if (offset !== undefined && (!INT_RE.test(String(offset)) || Number(offset) < 0)) {
+    throw new ApiError(400, 'VALIDATION_ERROR', 'offset must be a non-negative integer');
+  }
+  return {
+    limit: limit === undefined ? DEFAULT_PAGE_SIZE : Math.min(Number(limit), MAX_PAGE_SIZE),
+    offset: offset === undefined ? 0 : Number(offset),
+  };
+}
+
+async function list({ from, to, limit, offset }) {
   if (from !== undefined) assertValidSessionDate(from, 'from');
   if (to !== undefined) assertValidSessionDate(to, 'to');
   if (from !== undefined && to !== undefined && from > to) {
     throw new ApiError(400, 'VALIDATION_ERROR', 'from must be on or before to');
   }
-  return wodModel.listSummaries({ from, to });
+  const paging = assertValidPagination(limit, offset);
+  return wodModel.listSummaries({ from, to, ...paging });
 }
 
 function assertCompleteSchedule(data) {
@@ -156,6 +171,7 @@ function assertRestOfPayload(data) {
   assertValidMovements(data.skill_strength?.movements, 'skill_strength');
   assertValidFormat(data.wod);
   assertValidMovements(data.wod?.movements, 'wod');
+  assertWodHasContent(data.wod);
 }
 
 // Both the exact-duplicate-slot conflict (23505, from the

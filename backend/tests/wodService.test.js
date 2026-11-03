@@ -87,6 +87,40 @@ describe('wodService.create - validation', () => {
     ).resolves.toEqual({ id: 1 });
     expect(wodModel.create).toHaveBeenCalledTimes(1);
   });
+
+  it('rejects a wod with a format but no movements and no duration_or_target', async () => {
+    await expect(
+      wodService.create({ ...VALID_SCHEDULE, wod: { format: 'AMRAP' } }, 1)
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+    expect(wodModel.create).not.toHaveBeenCalled();
+  });
+
+  it('rejects a wod whose movements are all blank, with no duration_or_target either', async () => {
+    await expect(
+      wodService.create(
+        { ...VALID_SCHEDULE, wod: { format: 'AMRAP', movements: [{ movement_name: '  ' }] } },
+        1
+      )
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+  });
+
+  it('accepts a wod with a duration_or_target but no movements', async () => {
+    await expect(
+      wodService.create(
+        { ...VALID_SCHEDULE, wod: { format: 'STRENGTH', duration_or_target: 'Max Clean & Jerk' } },
+        1
+      )
+    ).resolves.toEqual({ id: 1 });
+  });
+
+  it('accepts a wod with movements but no duration_or_target', async () => {
+    await expect(
+      wodService.create(
+        { ...VALID_SCHEDULE, wod: { format: 'AMRAP', movements: [{ movement_name: 'Burpees' }] } },
+        1
+      )
+    ).resolves.toEqual({ id: 1 });
+  });
 });
 
 describe('wodService.update - validation', () => {
@@ -114,6 +148,14 @@ describe('wodService.update - validation', () => {
       status: 404,
       code: 'NOT_FOUND',
     });
+  });
+
+  it('rejects a wod with a format but no movements and no duration_or_target', async () => {
+    await expect(wodService.update(1, { wod: { format: 'EMOM' } })).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
+    expect(wodModel.update).not.toHaveBeenCalled();
   });
 });
 
@@ -233,5 +275,49 @@ describe('wodService.getTvState', () => {
     expect(state.current).toBeNull();
     expect(state.next).toBeNull();
     expect(state.remaining).toEqual([]);
+  });
+});
+
+describe('wodService.list - pagination', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    wodModel.listSummaries.mockResolvedValue([]);
+  });
+
+  it('defaults to limit 50, offset 0 when neither is given', async () => {
+    await wodService.list({});
+    expect(wodModel.listSummaries).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 50, offset: 0 })
+    );
+  });
+
+  it('caps limit at 100 even if a larger value is requested', async () => {
+    await wodService.list({ limit: '500' });
+    expect(wodModel.listSummaries).toHaveBeenCalledWith(expect.objectContaining({ limit: 100 }));
+  });
+
+  it('passes through a valid limit/offset', async () => {
+    await wodService.list({ limit: '10', offset: '20' });
+    expect(wodModel.listSummaries).toHaveBeenCalledWith(
+      expect.objectContaining({ limit: 10, offset: 20 })
+    );
+  });
+
+  it('rejects a non-numeric limit', async () => {
+    await expect(wodService.list({ limit: 'abc' })).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
+  });
+
+  it('rejects limit=0', async () => {
+    await expect(wodService.list({ limit: '0' })).rejects.toMatchObject({ status: 400 });
+  });
+
+  it('rejects a negative offset', async () => {
+    await expect(wodService.list({ offset: '-1' })).rejects.toMatchObject({
+      status: 400,
+      code: 'VALIDATION_ERROR',
+    });
   });
 });

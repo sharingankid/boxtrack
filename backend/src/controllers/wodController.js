@@ -26,8 +26,8 @@ async function getById(req, res, next) {
 
 async function list(req, res, next) {
   try {
-    const { from, to } = req.query;
-    res.status(200).json({ wods: await wodService.list({ from, to }) });
+    const { from, to, limit, offset } = req.query;
+    res.status(200).json({ wods: await wodService.list({ from, to, limit, offset }) });
   } catch (err) {
     next(err);
   }
