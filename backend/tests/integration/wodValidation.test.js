@@ -86,7 +86,7 @@ describe('Admin WOD routes - validation', () => {
         session_date: '2026-11-01',
         start_time: `0${index}:00`,
         end_time: `0${index}:45`,
-        wod: { format },
+        wod: { format, duration_or_target: '15 min' },
       });
       expect(res.status).toBe(201);
       expect(res.body.wod.wod.format).toBe(format);
@@ -142,5 +142,100 @@ describe('Admin WOD routes - validation', () => {
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('rejects a wod with a format but no movements and no duration_or_target', async () => {
+    const res = await post({
+      session_date: '2026-11-01',
+      start_time: '18:00',
+      end_time: '19:00',
+      wod: { format: 'AMRAP' },
+    });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('accepts a wod with only a duration_or_target (no movements)', async () => {
+    const res = await post({
+      session_date: '2026-11-01',
+      start_time: '18:00',
+      end_time: '19:00',
+      wod: { format: 'STRENGTH', duration_or_target: 'Max Clean & Jerk' },
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it('rejects a JSON body over the 100kb limit with a clean 413, not a 500', async () => {
+    const res = await post({
+      session_date: '2026-11-01',
+      start_time: '18:00',
+      end_time: '19:00',
+      wod: { format: 'AMRAP', notes: 'x'.repeat(200 * 1024) },
+    });
+    expect(res.status).toBe(413);
+    expect(res.body.error.code).toBe('PAYLOAD_TOO_LARGE');
+  });
+});
+
+describe('GET /wods - pagination', () => {
+  beforeEach(async () => {
+    await resetDatabase();
+    await seedCoach();
+  });
+
+  afterAll(async () => {
+    await closePool();
+  });
+
+  async function seedSessions(count) {
+    const token = await loginToken();
+    for (let i = 0; i < count; i += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await request(app)
+        .post('/api/admin/wods')
+        .set('Authorization', `Bearer ${token}`)
+        .send({
+          session_date: `2026-01-${String(i + 1).padStart(2, '0')}`,
+          start_time: '18:00',
+          end_time: '19:00',
+        });
+    }
+  }
+
+  it('does not require authentication', async () => {
+    const res = await request(app).get('/api/wods').query({ limit: 5 });
+    expect(res.status).toBe(200);
+  });
+
+  it('defaults to at most 50 results with no limit given', async () => {
+    await seedSessions(3);
+    const res = await request(app).get('/api/wods');
+    expect(res.status).toBe(200);
+    expect(res.body.wods.length).toBeLessThanOrEqual(50);
+  });
+
+  it('honours a smaller limit and offset', async () => {
+    await seedSessions(5);
+    const page1 = await request(app).get('/api/wods').query({ limit: 2, offset: 0 });
+    const page2 = await request(app).get('/api/wods').query({ limit: 2, offset: 2 });
+    expect(page1.body.wods).toHaveLength(2);
+    expect(page2.body.wods).toHaveLength(2);
+    expect(page1.body.wods[0].id).not.toBe(page2.body.wods[0].id);
+  });
+
+  it('caps an excessive limit at 100 instead of erroring', async () => {
+    const res = await request(app).get('/api/wods').query({ limit: 10000 });
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects a non-numeric limit with 400, not 500', async () => {
+    const res = await request(app).get('/api/wods').query({ limit: 'all' });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('does not change the existing response shape ({ wods: [...] })', async () => {
+    const res = await request(app).get('/api/wods').query({ limit: 1 });
+    expect(Object.keys(res.body)).toEqual(['wods']);
   });
 });

@@ -32,11 +32,17 @@ Email + password login, bcrypt-hashed passwords, a real session table (not a sta
 `logout` revokes a token immediately instead of waiting for it to expire. See
 `backend/src/services/authService.js`.
 
-- **Login**: `POST /auth/login` with `{ email, password }` → `{ token, user }`. The token is valid
-  **7 days** from login; there is no refresh endpoint, the user logs in again after that. Store it
+- **Login**: `POST /auth/login` with `{ email, password }` →
+  `{ token, user: { id, email, role }, expires_at }`. The token is valid **7 days** from login
+  (`expires_at`, ISO 8601 - use it rather than recomputing the expiry client-side); there is no
+  refresh endpoint, the user logs in again after that. Store it
   however suits the front-end (the current reference client uses `localStorage`, so the coach stays
   logged in across tab/browser restarts, not just for one tab session) and send it back as
   `Authorization: Bearer <token>` on every admin call.
+- **Current session**: `GET /auth/me` with the token in the header →
+  `{ user: { id, email, role }, expires_at }`, or `401 UNAUTHENTICATED` if the token was revoked
+  (logout on another device, password reset) or has expired. Call it when the app restores a token
+  from storage, so the coach isn't shown the admin until their first save fails.
 - **Logout**: `POST /auth/logout` with the token in the header, `204` - the token is deleted
   server-side, it stops working immediately, not just "expired".
 - **Roles**: `users.role` is one of `owner`, `coach`, `staff` (`coach` is the default for new
@@ -118,7 +124,7 @@ Returned by `GET /wods/today`, `GET /wods/tv-now` (nested under `current`/`next`
 | `skill_strength.kind` | `"skill"` \| `"strength"` | Required if `skill_strength` is sent. |
 | `skill_strength.instructions` | string \| null | |
 | `skill_strength.movements` | array of `{movement_name, detail}` | `movement_name` required, `detail` free text (charges/series, e.g. `"5x5 @ 80kg"`). |
-| `wod` | object \| null | Optional block, same idea as `skill_strength`. |
+| `wod` | object \| null | Optional block, same idea as `skill_strength`. If sent, needs at least one movement **or** a `duration_or_target` - a format with neither is rejected (`400 VALIDATION_ERROR`), since that isn't a workout anyone could actually do. |
 | `wod.format` | `"AMRAP"` \| `"FOR_TIME"` \| `"EMOM"` \| `"TABATA"` \| `"CHIPPER"` \| `"STRENGTH"` | Required if `wod` is sent. |
 | `wod.duration_or_target` | string \| null | Free text, e.g. `"20 min"`, `"21-15-9"`. |
 | `wod.notes` | string \| null | Coach remarks. |
@@ -191,20 +197,26 @@ place. See `wodService.getTvState()`.
 This endpoint always returns `200` - an empty day is a normal state (`current: null, next: null,
 remaining: []`), not an error.
 
-### `GET /api/wods?from=YYYY-MM-DD&to=YYYY-MM-DD` - public
+### `GET /api/wods?from=YYYY-MM-DD&to=YYYY-MM-DD&limit=&offset=` - public
 
-Both query params optional (omit both for full history). **200**, summaries only (not the full
-nested shape - fetch `/wods/:id` for detail):
+All four query params optional (omit `from`/`to` for full history). **200**, summaries only (not
+the full nested shape - fetch `/wods/:id` for detail):
 
 ```json
 { "wods": [ { "id": 8, "session_date": "2026-10-12", "start_time": "18:00", "end_time": "19:00", "title": null, "format": "AMRAP" } ] }
 ```
 
 `format` is `null` if the coach hasn't filled in the WOD block yet. Sorted newest date first, then
-by `start_time`.
+by `start_time`. **The response shape is unchanged by pagination** - `{ "wods": [...] }` only,
+no `total`/`has_more` - fetch one page past the last to know if there's more.
+
+**Pagination:** `limit` defaults to `50`, capped at `100` regardless of what's requested (a public,
+unauthenticated endpoint can't be made to pull the whole history in one call). `offset` defaults to
+`0`. Both must be non-negative integers if sent.
 
 **Errors:** `400 VALIDATION_ERROR` if `from`/`to` are present but not real `YYYY-MM-DD` calendar
-dates (`2026-02-31` is rejected), or if `from` is after `to`.
+dates (`2026-02-31` is rejected), if `from` is after `to`, or if `limit`/`offset` aren't
+non-negative integers (`limit=0` is also rejected - use a real page size).
 
 ### `GET /api/wods/:id` - public
 
@@ -235,7 +247,8 @@ the rest via `PUT` later):
 - `400 VALIDATION_ERROR` - missing `session_date`/`start_time`/`end_time`; `session_date` not a
   valid `YYYY-MM-DD` date; `start_time`/`end_time` not a valid `HH:mm` time; `end_time` at or
   before `start_time`; invalid `skill_strength.kind` (must be `skill`/`strength`); invalid
-  `wod.format` (must be one of the 6); a movement with no `movement_name`.
+  `wod.format` (must be one of the 6); a movement with no `movement_name`; a `wod` with a format
+  but no movements and no `duration_or_target`.
 - `409 DUPLICATE_SESSION` - a session already exists for that exact `(session_date, start_time)`
   pair. **Not** returned just for reusing a date with a different `start_time`.
 - `401 UNAUTHENTICATED` - missing/invalid/expired token.
@@ -291,43 +304,82 @@ completeness - see `src/controllers/{athlete,score,announcement,qrCode}Controlle
 implementation if a field's exact shape isn't obvious below. Every `:id` must be a positive integer
 (`400 VALIDATION_ERROR` otherwise, never a `500`); a missing resource is `404 NOT_FOUND`.
 
-### Athletes - `GET/POST/PUT /admin/athletes[/:id]` (authenticated, no public route)
+### Athletes - `GET/POST/PUT /admin/athletes[/:id]` (authenticated)
 
-Coach-managed roster: `{ id, first_name, last_name, photo_url, active, created_at, updated_at }`.
+Coach-managed roster:
+`{ id, first_name, last_name, photo_url, has_uploaded_photo, active, created_at, updated_at }`.
 No delete - `PUT` with `{ "active": false }` deactivates (soft-delete, keeps score history intact).
 `GET /admin/athletes?active=true|false` filters (any other value is a `400`). `photo_url` is
 optional but must be an `http(s)` URL when sent; `active` must be a real JSON boolean.
 
+**Photos.** Either an external `photo_url`, or a photo uploaded from the coach's phone:
+
+- `PUT /admin/athletes/:id/photo` (authenticated) - the **raw image** as the request body (not
+  JSON, not multipart), `Content-Type: image/jpeg`, `image/png` or `image/webp`, **2 MB max**
+  (resize client-side before upload). The real type is checked from the file's bytes, not the
+  header. → `200 { athlete }`, `400` if it isn't one of those images, `413 PAYLOAD_TOO_LARGE` if
+  over 2 MB. In the browser: `fetch(url, { method: 'PUT', headers: { Authorization, 'Content-Type': file.type }, body: file })`.
+- `DELETE /admin/athletes/:id/photo` (authenticated) → `204`, `404` if there was none.
+- `GET /athletes/:id/photo` (**public**, so the leaderboard on the TV can show it) → the image.
+
+Once uploaded, the athlete's `photo_url` becomes `/api/athletes/:id/photo?v=<upload time>` and
+`has_uploaded_photo` is `true` - use `photo_url` as-is in `<img src>`, it changes with every new
+upload so it can be cached for good. Sending that same URL back in a `PUT /admin/athletes/:id` is
+ignored (treated as "unchanged"), so a form can echo the athlete it read.
+
 ### Scores & leaderboard
 
-- `POST /admin/wods/:id/scores` (authenticated) - `{ athlete_id, category, result_value }`,
-  `category` one of `RX`/`Scaled`/`Modified`. `result_value` is always numeric: a time-based WOD
-  (`FOR_TIME`, `CHIPPER`) is entered as total seconds (convert `MM:SS` client-side), everything
-  else (`AMRAP`, `EMOM`, `TABATA`, `STRENGTH`) as a plain number (reps/rounds/kg). Upserts - a
-  second score for the same athlete on the same WOD replaces the first. `400` if the athlete
-  doesn't exist **or is deactivated** (a member who left keeps past scores but gets no new ones),
-  or if the session has no WOD block.
+What the coach types depends on the WOD's `format` (cahier des charges §4):
+
+| WOD format | Send | Stored as | `result_display` |
+|---|---|---|---|
+| `FOR_TIME`, `CHIPPER` | `time: "12:34"` (or `"1:02:03"`), or `result_value` in seconds | seconds | `"12:34"` |
+| `AMRAP` | `rounds` (whole number, required) + `reps` (whole number, default 0) | `result_value` = rounds, `extra_reps` = reps | `"8 rds + 12"` |
+| `EMOM`, `TABATA` | `result_value` (rounds or reps) | as sent | `"84"` |
+| `STRENGTH` | `result_value` (kg) | as sent | `"92.5 kg"` |
+
+An AMRAP sent with only `result_value` is a `400` - rounds and extra reps can't be mixed with a
+total rep count on the same leaderboard.
+
+- `POST /admin/wods/:id/scores` (authenticated) - one score:
+  `{ athlete_id, category, ...result as above }`, `category` one of `RX`/`Scaled`/`Modified`.
+  Upserts - a second score for the same athlete on the same WOD replaces the first. `400` if the
+  athlete doesn't exist **or is deactivated** (a member who left keeps past scores but gets no new
+  ones), or if the session has no WOD block. → `201 { score }`.
+- `PUT /admin/wods/:id/scores` (authenticated) - **the whole class at once**:
+  `{ "scores": [ { athlete_id, category, ...result }, ... ] }`, 1 to 60 entries, each athlete at
+  most once. All-or-nothing: every entry is validated before anything is written, then all are
+  upserted in one transaction. A `400` names the faulty entry (`scores[3].rounds is required...`).
+  → `200` with the same body as the leaderboard below. Athletes not in the batch keep their scores.
 - `DELETE /admin/scores/:id` (authenticated).
 - `GET /wods/:id/leaderboard` (public) - ranked per category (RX ranked only against RX, etc.),
   ascending for time-based formats, descending otherwise - the direction is derived from the WOD's
-  own `format`, never stored on the score itself. **Ties share a rank** (standard competition
-  ranking: two athletes on `754` s are both `rank: 1`, the next one is `rank: 3`).
+  own `format`, never stored on the score itself. An AMRAP ranks on rounds, then extra reps.
+  **Ties share a rank** (standard competition ranking: two athletes on `754` s are both
+  `rank: 1`, the next one is `rank: 3`).
 
 ```json
 {
   "wod_id": 7, "format": "FOR_TIME", "sort": "asc",
   "rankings": {
-    "RX": [ { "rank": 1, "id": 3, "wod_id": 7, "athlete": { "id": 2, "first_name": "Léa", "last_name": "Martin" }, "category": "RX", "result_value": 754, "created_at": "...", "updated_at": "..." } ],
+    "RX": [ { "rank": 1, "id": 3, "wod_id": 7, "athlete": { "id": 2, "first_name": "Léa", "last_name": "Martin" }, "category": "RX", "result_value": 754, "extra_reps": null, "result_display": "12:34", "created_at": "...", "updated_at": "..." } ],
     "Scaled": [],
     "Modified": []
   }
 }
 ```
 
-### Announcements - `GET /announcements` (public, active only), `GET/POST/PUT/DELETE /admin/announcements[/:id]` (authenticated, all)
+### Announcements - `GET /announcements` (public, visible only), `GET/POST/PUT/DELETE /admin/announcements[/:id]` (authenticated, all)
 
-`{ id, title, body, active, created_at, updated_at }`, newest first. `title` required;
-`active: false` (a JSON boolean) unpublishes without deleting.
+`{ id, title, body, active, ends_on, created_at, updated_at }`, newest first. `title` required;
+`active: false` (a JSON boolean) unpublishes without deleting. `ends_on` is optional: a
+`YYYY-MM-DD` date (Europe/Paris) after which the announcement disappears from the public views by
+itself - shown through that whole day, hidden from the next. `null` (or omitted) = no end date;
+send `null` in a `PUT` to remove one. The admin list always returns everything, expired included.
+
+`GET /announcements/:id` (public) is the shareable link to one announcement
+(`{ "announcement": {...} }`). An unpublished or expired announcement is `404 NOT_FOUND`, exactly
+like one that doesn't exist, so a link shared earlier stops showing it.
 
 ### QR codes - `GET /qrcodes` (public), `POST/PUT/DELETE /admin/qrcodes[/:id]` (authenticated)
 
@@ -340,12 +392,34 @@ optional but must be an `http(s)` URL when sent; `active` must be a real JSON bo
 
 ## Changelog - breaking changes from the previous version of this contract
 
+**Score shapes, whole-class entry, photos, announcement end date (October 2026).**
+- **Breaking:** an `AMRAP` score is now `rounds` + `reps` (`result_value` alone is a `400`).
+  Other formats are unchanged; `FOR_TIME`/`CHIPPER` additionally accept `time: "MM:SS"`.
+- Every score now carries `extra_reps` and `result_display`.
+- New `PUT /admin/wods/:id/scores` (whole class, one transaction).
+- New photo upload: `PUT`/`DELETE /admin/athletes/:id/photo`, public `GET /athletes/:id/photo`;
+  athletes gain `has_uploaded_photo`.
+- Announcements gain an optional `ends_on`.
+- A request body over the size limit is now `413 PAYLOAD_TOO_LARGE` (was a `500`).
+
+**Deployment and session additions (October 2026).** Additive only, nothing existing changed shape:
+- `POST /auth/login` also returns `expires_at`.
+- New `GET /auth/me` (validate a stored token).
+- New public `GET /announcements/:id` (shareable link).
+
 **Validation hardening (October 2026).** Front-end impact, if any, is a `400` where the previous
 version accepted bad data:
 - Impossible dates (`2026-02-31`) and `from` after `to` on `GET /wods` → `400`.
 - QR code `url` and athlete `photo_url` must be `http(s)`.
 - `active` (athletes, announcements) must be a JSON boolean, not `"false"`.
 - New scores for a deactivated athlete → `400`.
+
+**Content requirement and pagination on `GET /wods` (November 2026).** Front-end impact, if any,
+is a `400` where the previous version accepted an empty `wod` block:
+- A `wod` block with a `format` but no movements and no `duration_or_target` → `400
+  VALIDATION_ERROR`, on both `POST` and `PUT /admin/wods/:id`.
+- `GET /wods` accepts `limit`/`offset`; without them it now returns at most `50` sessions instead
+  of the whole table. Response shape unchanged (`{ "wods": [...] }`).
 - Leaderboard ties now share a rank (was: different ranks by insertion order).
 
 **Recipes/Spoonacular removed entirely.** Every `/recipes` and `/admin/recipes` route, the Recipe
