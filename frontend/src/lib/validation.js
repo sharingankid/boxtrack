@@ -27,5 +27,13 @@ export function validateSession(form) {
       errors[key] =
         `Mouvement ${index + 1} : le nom est obligatoire. Complétez-le ou supprimez ce mouvement.`
   }
+  // Same rule as the API: a WOD needs at least one movement or a duration / target.
+  if (
+    !errors.wod &&
+    !form.wod.movements.some((m) => m.movement_name.trim()) &&
+    !form.wod.duration_or_target?.trim()
+  )
+    errors.wod =
+      'Ajoutez au moins un mouvement au WOD, ou indiquez sa durée ou son objectif.'
   return errors
 }
