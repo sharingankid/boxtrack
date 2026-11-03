@@ -79,6 +79,10 @@ async function mock(page) {
         },
       )
     if (path === '/wods') return send({ wods: state.items })
+    if (path === '/wods/today')
+      return send({
+        wods: state.items.filter((x) => x.session_date === today),
+      })
     if (path.startsWith('/wods/'))
       return send({
         wod: state.items.find((x) => x.id === Number(path.split('/').at(-1))),
@@ -119,7 +123,7 @@ async function mock(page) {
   return state
 }
 async function login(page) {
-  await page.goto('/')
+  await page.goto('/login')
   await expect(page).toHaveURL(/\/login$/)
   await page.getByLabel('Email', { exact: true }).fill('staff@crossfitlab.fr')
   await page.getByLabel('Mot de passe', { exact: true }).fill('test-password')
@@ -155,18 +159,20 @@ test('routes, persistent staff session, logout and local expiry', async ({
     '/coach/sessions',
     '/coach/sessions/new',
     '/coach/sessions/1/edit',
-    '/history',
-    '/sessions/1',
   ]) {
     await page.goto(path)
     await expect(page).toHaveURL(/\/login$/)
+  }
+  for (const path of ['/history', '/sessions/1']) {
+    await page.goto(path)
+    await expect(page).toHaveURL(/\/$/)
   }
   await login(page)
   await page.reload()
   await expect(
     page.getByRole('heading', { name: 'Le planning', exact: true }),
   ).toBeVisible()
-  await page.goto('/')
+  await page.goto('/login')
   await expect(page).toHaveURL(/\/coach$/)
   await page.getByRole('button', { name: 'Déconnexion' }).click()
   await expect(page).toHaveURL(/\/login$/)
