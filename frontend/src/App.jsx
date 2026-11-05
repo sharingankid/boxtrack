@@ -5,11 +5,17 @@ import {
   Route,
   RouterProvider,
 } from 'react-router-dom'
+import ClassTimerPage from './pages/ClassTimerPage.jsx'
 import CoachLayout from './components/CoachLayout.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import EditorPage from './pages/EditorPage.jsx'
 import HomePage from './pages/HomePage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
+import MemberLayout from './components/MemberLayout.jsx'
+import MemberSessionPage from './pages/MemberSessionPage.jsx'
+import MemberHistoryPage, { MemberSessionDetailPage } from './pages/MemberHistoryPage.jsx'
+import MemberProgressPage from './pages/MemberProgressPage.jsx'
+import MemberProfilePage from './pages/MemberProfilePage.jsx'
 import ScreenPage from './pages/ScreenPage.jsx'
 const router = createBrowserRouter(
   createRoutesFromElements(
@@ -17,6 +23,14 @@ const router = createBrowserRouter(
       <Route path="/" element={<HomePage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/screen" element={<ScreenPage />} />
+      <Route path="/chrono" element={<ClassTimerPage />} />
+      <Route element={<MemberLayout />}>
+        <Route path="/seance" element={<MemberSessionPage />} />
+        <Route path="/moi/seances" element={<MemberHistoryPage />} />
+        <Route path="/moi/seances/:id" element={<MemberSessionDetailPage />} />
+        <Route path="/moi/progres" element={<MemberProgressPage />} />
+        <Route path="/moi/profil" element={<MemberProfilePage />} />
+      </Route>
       <Route path="/coach" element={<CoachLayout />}>
         <Route index element={<DashboardPage />} />
         <Route path="upcoming" element={<DashboardPage />} />

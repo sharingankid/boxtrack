@@ -17,13 +17,21 @@ const paths = {
   eye: 'M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12Zm13 0a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z',
   lock: 'M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5Zm7 4v3',
   barbell: 'M3 7v10m4-13v16m10-16v16m4-13v10M7 12h10M1 12h2m18 0h2',
+  chart: 'M4 20V11m6 9V5m6 15v-7m5 7H3',
+  trophy:
+    'M8 21h8m-4-4v4M7 4h10v5a5 5 0 0 1-10 0V4ZM7 6H4v1a3 3 0 0 0 3 3m10-4h3v1a3 3 0 0 1-3 3',
+  user: 'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0',
+  play: 'M8 5.5v13a1 1 0 0 0 1.5.86l10.2-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z',
+  stop: 'M7 6h10a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z',
 }
+// Solid shapes (media controls) are filled instead of stroked.
+const FILLED = new Set(['play', 'stop'])
 export default function Icon({ name, className = '' }) {
   return (
     <svg
       className={`icon ${className}`}
       viewBox="0 0 24 24"
-      fill="none"
+      fill={FILLED.has(name) ? 'currentColor' : 'none'}
       stroke="currentColor"
       strokeWidth="1.65"
       strokeLinecap="round"
