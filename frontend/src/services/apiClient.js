@@ -1,7 +1,9 @@
 const API_BASE_URL =
   import.meta.env?.VITE_API_BASE_URL || 'http://localhost:3000/api'
 
-const request = async (path, options = {}) => {
+// `authEvent`: which session a 401 ends - the coach's by default; member
+// routes pass their own so a member's expired token never signs a coach out.
+const request = async (path, { authEvent = 'boxtrack:auth-error', ...options } = {}) => {
   const headers = { ...options.headers }
   if (options.body) headers['Content-Type'] = 'application/json'
   let response
@@ -32,12 +34,19 @@ const request = async (path, options = {}) => {
     error.code = payload.error?.code
     if (headers.Authorization && response.status === 401)
       window.dispatchEvent(
-        new CustomEvent('boxtrack:auth-error', { detail: response.status }),
+        new CustomEvent(authEvent, { detail: response.status }),
       )
     throw error
   }
   return payload
 }
+
+const memberRequest = (path, token, options = {}) =>
+  request(path, {
+    ...options,
+    authEvent: 'boxtrack:member-auth-error',
+    headers: { Authorization: `Bearer ${token}` },
+  })
 
 export const apiClient = {
   login: (credentials) =>
@@ -59,6 +68,23 @@ export const apiClient = {
     return request(`/wods${query ? `?${query}` : ''}`).then((data) => data.wods)
   },
   detail: (id) => request(`/wods/${id}`).then((data) => data.wod),
+  leaderboard: (id) => request(`/wods/${id}/leaderboard`),
+  // Member space (QR code on the TV): its own accounts and tokens.
+  member: {
+    register: (data) =>
+      request('/members/register', { method: 'POST', body: JSON.stringify(data) }),
+    login: (credentials) =>
+      request('/members/login', { method: 'POST', body: JSON.stringify(credentials) }),
+    logout: (token) => memberRequest('/members/logout', token, { method: 'POST' }),
+    me: (token) => memberRequest('/members/me', token),
+    scores: (token) =>
+      memberRequest('/members/me/scores', token).then((data) => data.scores),
+    submitScore: (score, token) =>
+      memberRequest('/members/me/scores', token, {
+        method: 'POST',
+        body: JSON.stringify(score),
+      }),
+  },
   create: (session, token) =>
     request('/admin/wods', {
       method: 'POST',

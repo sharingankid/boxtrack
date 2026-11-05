@@ -13,6 +13,68 @@ import { ArcadeClock, PixelRunner } from '../components/TvArcade.jsx'
 import { FORMAT_LABELS, formatDate, withoutDashes } from '../lib/format.js'
 import { FORMAT_CUES } from '../lib/training.js'
 import { useSessions } from '../state/SessionsContext.jsx'
+import PixelAthlete from '../components/PixelAthlete.jsx'
+import QrCode from '../components/QrCode.jsx'
+import { memberUrl } from '../lib/memberUrl.js'
+import { ATHLETES } from '../data/athletes.js'
+import { movementAnimation } from '../lib/movementAnimation.js'
+import { isFrontMove } from '../lib/athletePoses.js'
+
+// Members scan the TV to open today's session on their phone.
+function TvQr({ large = false }) {
+  const url = memberUrl()
+  return (
+    <div className={`tv-qr ${large ? 'is-large' : ''}`}>
+      <QrCode value={url} label="QR code : suivre la séance sur son téléphone" />
+      <p>
+        <strong>{large ? 'SUIS LA SÉANCE SUR TON TÉLÉPHONE' : 'SCANNE-MOI'}</strong>
+        {large && <small>{url.replace(/^https?:\/\//, '')}</small>}
+      </p>
+    </div>
+  )
+}
+
+// A small athlete beside a phase title, framed for front or side views.
+function PhaseAthlete({ move, athlete = ATHLETES[1] }) {
+  return (
+    <PixelAthlete
+      className="tv-phase-athlete"
+      athlete={athlete}
+      move={move}
+      view={isFrontMove(move) ? 'compact' : 'side'}
+    />
+  )
+}
+
+// One athlete demonstrates each WOD movement in turn (5 s each).
+function WodDemo({ movements = [], now }) {
+  const named = movements.filter((item) => item.movement_name?.trim())
+  if (!named.length) return null
+  const index = Math.floor(now.seconds / 5) % named.length
+  const name = named[index].movement_name
+  const move = movementAnimation(name)
+  return (
+    <div className="tv-wod-demo" aria-hidden="true">
+      <div key={`${index}-${name}`} className="tv-wod-demo-move">
+        <PixelAthlete
+          athlete={ATHLETES[index % ATHLETES.length]}
+          move={move}
+          view={
+            !isFrontMove(move)
+              ? 'side'
+              : ['pullup', 'wallball'].includes(move)
+                ? 'full'
+                : 'compact'
+          }
+        />
+        <p>
+          <small>EN DÉMO</small>
+          <strong>{name}</strong>
+        </p>
+      </div>
+    </div>
+  )
+}
 
 // Fit the complete phase, including multiline instructions, to the TV column.
 // Recalculate after a publication, resize or font load; no truncated movements.
@@ -85,7 +147,7 @@ function slotProgress(session, now, current) {
   )
 }
 
-function TvStandby({ now, title, message, status }) {
+export function TvStandby({ now, title, message, status }) {
   return (
     <main className="tv-screen tv-standby">
       <header className="tv-header">
@@ -118,13 +180,26 @@ function TvStandby({ now, title, message, status }) {
           </p>
           <h2>{title}</h2>
           <p className="tv-standby-message">{message}</p>
+          <div className="tv-standby-track" aria-hidden="true">
+            {ATHLETES.map((athlete, index) => (
+              <PixelAthlete
+                key={athlete.id}
+                athlete={athlete}
+                phase={index}
+                move={
+                  status === 'error'
+                    ? 'idle'
+                    : status === 'loading'
+                      ? 'run'
+                      : ['jack', 'squat', 'run', 'jump'][index]
+                }
+              />
+            ))}
+          </div>
         </div>
         <aside>
-          <span>PROGRAMME DU JOUR</span>
-          <div>Échauffement</div>
-          <div>Technique ou force</div>
-          <div>WOD du jour</div>
-          <p>Affichage automatique à la réception du programme.</p>
+          <TvQr large />
+          <p>Programme, chrono et checklist de la séance, sans compte.</p>
         </aside>
       </section>
       <footer>
@@ -197,12 +272,15 @@ export function TvProgramme({
                 {FORMAT_LABELS[session.wod?.format] || 'WOD'}
               </span>
             </div>
-            {session.wod?.duration_or_target && (
+            {session.wod?.duration_or_target ? (
               <div className="tv-objective">
                 <small>OBJECTIF</small>
                 <strong>{session.wod.duration_or_target}</strong>
               </div>
+            ) : (
+              <span />
             )}
+            <TvQr />
           </div>
           <FitContent>
             <Movements items={session.wod?.movements} />
@@ -214,6 +292,7 @@ export function TvProgramme({
             )}
           </FitContent>
           <div className="tv-wod-bottom">
+            <WodDemo movements={session.wod?.movements} now={now} />
             <span>
               {FORMAT_CUES[session.wod?.format] || 'Votre entraînement du jour'}
             </span>
@@ -226,6 +305,7 @@ export function TvProgramme({
           <section className="tv-phase tv-warmup">
             <div className="tv-phase-heading">
               <h2>Échauffement</h2>
+              <PhaseAthlete athlete={ATHLETES[2]} move="jack" />
             </div>
             <FitContent>
               <h3>Général</h3>
@@ -244,6 +324,11 @@ export function TvProgramme({
                     ? 'Force'
                     : 'Technique'}
                 </h2>
+                <PhaseAthlete
+                  move={movementAnimation(
+                    session.skill_strength.movements?.[0]?.movement_name || 'press',
+                  )}
+                />
               </div>
               <FitContent>
                 <Movements items={session.skill_strength?.movements} />

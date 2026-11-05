@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { apiClient } from '../services/apiClient.js'
 import { movementDetail } from '../services/sessionAdapter.js'
+import { loadToday, loadUpcoming } from '../services/publicSessions.js'
+import { useAuth } from '../state/AuthContext.jsx'
 import useClock from '../hooks/useClock.js'
 import Icon from '../components/Icon.jsx'
 import DemoBanner from '../components/DemoBanner.jsx'
+import ExerciseChecklist from '../components/ExerciseChecklist.jsx'
+import PixelAthlete from '../components/PixelAthlete.jsx'
+import { ATHLETES } from '../data/athletes.js'
+import { movementAnimation } from '../lib/movementAnimation.js'
+import { isFrontMove } from '../lib/athletePoses.js'
 import {
   selectSchedule,
   sessionState,
@@ -15,7 +21,16 @@ import {
 import { FORMAT_LABELS, formatDate, shortDate, withoutDashes } from '../lib/format.js'
 import { FORMAT_CUES } from '../lib/training.js'
 
-function SessionCard({ session, current }) {
+const UPCOMING_KEY = 'boxtrack.home.showUpcoming'
+function readShowUpcoming() {
+  try {
+    return localStorage.getItem(UPCOMING_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function SessionCard({ session, current, checklist = false }) {
   const movements = (session.wod?.movements || []).filter((item) =>
     item.movement_name?.trim(),
   )
@@ -39,7 +54,10 @@ function SessionCard({ session, current }) {
         {session.wod?.duration_or_target && (
           <p className="home-session-objective">{session.wod.duration_or_target}</p>
         )}
-        {movements.length > 0 && (
+        {movements.length > 0 && checklist && (
+          <ExerciseChecklist session={session} movements={movements} />
+        )}
+        {movements.length > 0 && !checklist && (
           <ul>
             {movements.slice(0, 4).map((item, index) => (
               <li key={`${item.movement_name}-${index}`}>
@@ -59,13 +77,22 @@ function SessionCard({ session, current }) {
 
 export default function HomePage() {
   const now = useClock()
+  const { mode } = useAuth()
   const [today, setToday] = useState({ sessions: [], status: 'loading', error: '' })
   const [upcoming, setUpcoming] = useState({ sessions: [], status: 'loading', error: '' })
+  const [showUpcoming, setShowUpcoming] = useState(readShowUpcoming)
+  const toggleUpcoming = () => {
+    setShowUpcoming(!showUpcoming)
+    try {
+      localStorage.setItem(UPCOMING_KEY, showUpcoming ? '0' : '1')
+    } catch {
+      /* Private mode: the choice lasts for this visit only. */
+    }
+  }
 
   useEffect(() => {
     let active = true
-    apiClient
-      .today()
+    loadToday(mode, now.date)
       .then((sessions) => {
         if (active) setToday({ sessions, status: 'ready', error: '' })
       })
@@ -77,8 +104,7 @@ export default function HomePage() {
             error: 'Connexion indisponible. Réessayez dans un instant.',
           })
       })
-    apiClient
-      .history({ from: now.date, limit: 10 })
+    loadUpcoming(mode, now.date)
       .then((sessions) => {
         if (active)
           setUpcoming({ sessions: sortSessions(sessions), status: 'ready', error: '' })
@@ -108,6 +134,16 @@ export default function HomePage() {
   const futureDays = upcoming.sessions.filter(
     (session) => session.session_date > now.date,
   )
+  // The four mock-ups warm up the page, seen from the front: today's front
+  // movements first, then a squat / jumping jack / jump / run warm-up.
+  const todayMoves = (schedule.display?.wod?.movements || [])
+    .map((item) => item.movement_name?.trim())
+    .filter(Boolean)
+    .map(movementAnimation)
+    .filter(isFrontMove)
+  const lineup = [
+    ...new Set([...todayMoves, 'squat', 'jack', 'jump', 'run']),
+  ].slice(0, ATHLETES.length)
 
   return (
     <div className="home-page">
@@ -123,10 +159,16 @@ export default function HomePage() {
             <small>CROSSFIT LAB</small>
           </span>
         </div>
-        <Link to="/login" className="button home-coach-link">
-          Espace coach
-          <Icon name="arrow" />
-        </Link>
+        <div className="home-header-links">
+          <Link to="/seance" className="button primary home-coach-link">
+            <Icon name="user" />
+            Mon espace
+          </Link>
+          <Link to="/login" className="button home-coach-link">
+            Coach
+            <Icon name="arrow" />
+          </Link>
+        </div>
       </header>
 
       <main className="home-main">
@@ -141,6 +183,16 @@ export default function HomePage() {
             Consultez le programme du jour et les prochaines séances de la box,
             sans vous connecter.
           </p>
+          <div className="home-lineup" aria-hidden="true">
+            {ATHLETES.map((athlete, index) => (
+              <PixelAthlete
+                key={athlete.id}
+                athlete={athlete}
+                move={lineup[index]}
+                phase={index}
+              />
+            ))}
+          </div>
         </section>
 
         <section className="home-section" aria-label="Séance en cours ou à venir aujourd'hui">
@@ -154,12 +206,25 @@ export default function HomePage() {
           )}
           {schedule.display && (
             <>
-              <SessionCard session={schedule.display} current={!!schedule.current} />
+              <SessionCard
+                key={schedule.display.id}
+                session={schedule.display}
+                current={!!schedule.current}
+                checklist
+              />
               {slotCountdown(schedule.display, now, !!schedule.current) && (
                 <p className="home-countdown">
                   {slotCountdown(schedule.display, now, !!schedule.current)}
                 </p>
               )}
+              <Link
+                className="button home-timer-link"
+                to={`/chrono?seance=${schedule.display.id}`}
+              >
+                <Icon name="clock" />
+                Chrono et classement de la classe
+                <Icon name="arrow" />
+              </Link>
             </>
           )}
           {laterToday.length > 0 && (
@@ -179,19 +244,31 @@ export default function HomePage() {
         <section className="home-section" aria-label="Prochaines séances">
           <div className="home-section-heading">
             <h2>Prochaines séances</h2>
+            <button
+              className="button ghost home-upcoming-toggle"
+              aria-expanded={showUpcoming}
+              aria-controls="home-upcoming"
+              onClick={toggleUpcoming}
+            >
+              {showUpcoming
+                ? 'Masquer'
+                : `Afficher${futureDays.length ? ` (${Math.min(futureDays.length, 6)})` : ''}`}
+            </button>
           </div>
-          {upcoming.status === 'loading' && <p className="muted">Chargement…</p>}
-          {upcoming.status === 'error' && <p className="form-error">{upcoming.error}</p>}
-          {upcoming.status === 'ready' && futureDays.length === 0 && (
-            <p className="muted">Aucune séance à venir n’est encore programmée.</p>
-          )}
-          {futureDays.length > 0 && (
-            <div className="home-upcoming-grid">
-              {futureDays.slice(0, 6).map((session) => (
-                <SessionCard key={session.id} session={session} current={false} />
-              ))}
-            </div>
-          )}
+          <div id="home-upcoming" hidden={!showUpcoming}>
+            {upcoming.status === 'loading' && <p className="muted">Chargement…</p>}
+            {upcoming.status === 'error' && <p className="form-error">{upcoming.error}</p>}
+            {upcoming.status === 'ready' && futureDays.length === 0 && (
+              <p className="muted">Aucune séance à venir n’est encore programmée.</p>
+            )}
+            {futureDays.length > 0 && (
+              <div className="home-upcoming-grid">
+                {futureDays.slice(0, 6).map((session) => (
+                  <SessionCard key={session.id} session={session} current={false} />
+                ))}
+              </div>
+            )}
+          </div>
         </section>
       </main>
 
