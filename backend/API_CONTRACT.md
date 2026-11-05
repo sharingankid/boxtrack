@@ -388,6 +388,32 @@ like one that doesn't exist, so a link shared earlier stops showing it.
 `http(s)` URL (`javascript:`/`data:` links are refused, since the front renders it as a link);
 `order_index` an integer. The public `GET /qrcodes` is also what the admin screen lists.
 
+### Members - `/members/*` (sign-up from the TV's QR code)
+
+A member account is an athlete (same roster as the coach's, `created_by` NULL) with an email,
+a bcrypt password and the pixel `avatar` they picked (`manA`, `manB`, `womanA`, `womanB`). Member
+tokens work like the staff ones (random, stored hashed, 7 days, revoked on logout) but live in
+`member_sessions`: **a member token is `401` on every `/admin/*` route, and a staff token is `401`
+on `/members/me*`.**
+
+- `POST /members/register` (public, rate-limited like the login) -
+  `{ first_name, last_name, email, password, avatar? }` → **201**
+  `{ token, member: { id, first_name, last_name, email, avatar }, expires_at }`. `400` if a name is
+  empty or over 60 characters, the email is invalid, the password isn't 8-128 characters or the
+  avatar unknown; `409 EMAIL_TAKEN` if the email (case-insensitive) already has an account.
+- `POST /members/login` (public, rate-limited) - `{ email, password }` → **200**, same body.
+  `401 INVALID_CREDENTIALS` for a wrong password, an unknown email or a deactivated athlete alike.
+- `POST /members/logout` (member) → **204**. `GET /members/me` (member) → `{ member, expires_at }`.
+- `GET /members/me/scores` (member) → `{ "scores": [...] }`, newest session first (100 max):
+  `{ id, wod_id, session_date, start_time, title, format, category, result_value, extra_reps,
+  result_display, rank, participants }` - `rank` among `participants` scores of the same WOD and
+  category, computed like the leaderboard (ties share a rank).
+- `POST /members/me/scores` (member) - `{ wod_id, category, ...result }` with the result shaped as
+  in the Scores table above (`time` for FOR_TIME/CHIPPER, `rounds` + `reps` for AMRAP...). Always
+  scores the member's own athlete (an `athlete_id` in the body is ignored), replaces their previous
+  score on that WOD, and is refused (`400`) for a session dated after today (Europe/Paris).
+  → **201** `{ score, leaderboard }`, the leaderboard ready to display. `recorded_by` is NULL.
+
 ---
 
 ## Changelog - breaking changes from the previous version of this contract

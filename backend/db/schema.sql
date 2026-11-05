@@ -103,16 +103,16 @@ CREATE INDEX idx_movements_wod_phase ON movements(wod_id, phase, order_index);
 -- Optional tier (cahier des charges §6 "si le temps le permet")
 -- ============================================================
 
--- Managed exclusively by the coach in V1 - no athlete self-registration
--- (cahier des charges §6). Soft-delete via `active` so historical scores
--- stay intact when a member leaves the box.
+-- Created by the coach, or by the member when signing up from the TV's QR
+-- code (`created_by` NULL, see member_accounts). Soft-delete via `active` so
+-- historical scores stay intact when a member leaves the box.
 CREATE TABLE athletes (
     id         SERIAL PRIMARY KEY,
     first_name TEXT NOT NULL,
     last_name  TEXT NOT NULL,
     photo_url  TEXT,
     active     BOOLEAN NOT NULL DEFAULT true,
-    created_by INTEGER NOT NULL REFERENCES users(id),
+    created_by INTEGER REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -146,13 +146,37 @@ CREATE TABLE scores (
     category     TEXT NOT NULL CHECK (category IN ('RX', 'Scaled', 'Modified')),
     result_value NUMERIC NOT NULL CHECK (result_value >= 0),
     extra_reps   INTEGER CHECK (extra_reps >= 0),
-    recorded_by  INTEGER NOT NULL REFERENCES users(id),
+    recorded_by  INTEGER REFERENCES users(id), -- NULL = entered by the member
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (wod_id, athlete_id)
 );
 
 CREATE INDEX idx_scores_wod_id ON scores(wod_id);
+CREATE INDEX idx_scores_athlete_id ON scores(athlete_id);
+
+-- A member's own account: an athlete row plus credentials, so the scores a
+-- member enters land in the same leaderboard as the coach's. `avatar` is the
+-- pixel athlete they picked. Member tokens have their own table: requireAuth
+-- only reads `sessions`, so a member token never opens an admin route.
+CREATE TABLE member_accounts (
+    athlete_id    INTEGER PRIMARY KEY REFERENCES athletes(id) ON DELETE CASCADE,
+    email         TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    avatar        TEXT NOT NULL DEFAULT 'manA'
+                  CHECK (avatar IN ('manA', 'manB', 'womanA', 'womanB')),
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE member_sessions (
+    id         SERIAL PRIMARY KEY,
+    athlete_id INTEGER NOT NULL REFERENCES athletes(id) ON DELETE CASCADE,
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_member_sessions_athlete_id ON member_sessions(athlete_id);
 
 -- Owner-published announcements (events, closures, schedule changes...).
 -- `active` lets the coach pull one down without deleting its history.
@@ -193,6 +217,7 @@ CREATE TABLE schema_migrations (
 
 INSERT INTO schema_migrations (name) VALUES
     ('001_real_schedules_and_remove_recipes.sql'),
-    ('002_score_extra_reps_photos_announcement_end.sql');
+    ('002_score_extra_reps_photos_announcement_end.sql'),
+    ('003_member_accounts.sql');
 
 COMMIT;
