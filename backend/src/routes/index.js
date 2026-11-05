@@ -9,6 +9,7 @@ const announcementRoutes = require('./announcement.routes');
 const adminAnnouncementRoutes = require('./adminAnnouncement.routes');
 const qrCodeRoutes = require('./qrCode.routes');
 const adminQrCodeRoutes = require('./adminQrCode.routes');
+const memberRoutes = require('./member.routes');
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.use('/announcements', announcementRoutes);
 router.use('/admin/announcements', adminAnnouncementRoutes);
 router.use('/qrcodes', qrCodeRoutes);
 router.use('/admin/qrcodes', adminQrCodeRoutes);
+router.use('/members', memberRoutes);
 
 module.exports = router;
