@@ -8,6 +8,7 @@ import {
 import CoachLayout from './components/CoachLayout.jsx'
 import DashboardPage from './pages/DashboardPage.jsx'
 import EditorPage from './pages/EditorPage.jsx'
+import HomeLandingPage from './pages/HomeLandingPage.jsx'
 import LoginPage from './pages/LoginPage.jsx'
 import ScreenPage from './pages/ScreenPage.jsx'
 import { useAuth } from './state/AuthContext.jsx'
@@ -24,6 +25,7 @@ const router = createBrowserRouter(
   createRoutesFromElements(
     <>
       <Route path="/" element={<Entry />} />
+      <Route path="/home" element={<HomeLandingPage />} />
       <Route path="/login" element={<LoginPage />} />
       <Route path="/screen" element={<ScreenPage />} />
       <Route path="/coach" element={<CoachLayout />}>

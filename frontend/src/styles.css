@@ -3344,3 +3344,7 @@ progress::-webkit-progress-value {
 @keyframes clock-tick { 50% { opacity: .55; } }
 @keyframes track-sheen { 0%, 35% { transform: translateX(-100%); } 75%, 100% { transform: translateX(100%); } }
 @keyframes tv-card-arrive { from { opacity: 0; transform: translateY(calc(.7 * var(--tvh))); } to { opacity: 1; transform: translateY(0); } }
+
+.landing-page { background: #101212; }
+.landing-page a:hover { color: #ffb88f; }
+.landing-page .dots { background-color: #0b0c0c; background-image: radial-gradient(#2a2e2e 1px, transparent 1px); background-size: 16px 16px; }
