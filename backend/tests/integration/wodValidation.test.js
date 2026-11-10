@@ -3,6 +3,11 @@ const app = require('../../src/app');
 const { resetDatabase, seedCoach, closePool } = require('./helpers/testDb');
 const { loginToken } = require('./helpers/auth');
 
+// Both describe blocks share one pool: close it once, after the whole file.
+afterAll(async () => {
+  await closePool();
+});
+
 describe('Admin WOD routes - validation', () => {
   let token;
 
@@ -10,10 +15,6 @@ describe('Admin WOD routes - validation', () => {
     await resetDatabase();
     await seedCoach();
     token = await loginToken();
-  });
-
-  afterAll(async () => {
-    await closePool();
   });
 
   function post(body) {
@@ -181,10 +182,6 @@ describe('GET /wods - pagination', () => {
   beforeEach(async () => {
     await resetDatabase();
     await seedCoach();
-  });
-
-  afterAll(async () => {
-    await closePool();
   });
 
   async function seedSessions(count) {
