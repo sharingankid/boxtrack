@@ -89,9 +89,9 @@ describe('wodService.create - validation', () => {
   });
 
   it('rejects a wod with a format but no movements and no duration_or_target', async () => {
-    await expect(
-      wodService.create({ ...VALID_SCHEDULE, wod: { format: 'AMRAP' } }, 1)
-    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR' });
+    await expect(wodService.create({ ...VALID_SCHEDULE, wod: { format: 'AMRAP' } }, 1)).rejects.toMatchObject(
+      { status: 400, code: 'VALIDATION_ERROR' }
+    );
     expect(wodModel.create).not.toHaveBeenCalled();
   });
 
@@ -286,9 +286,7 @@ describe('wodService.list - pagination', () => {
 
   it('defaults to limit 50, offset 0 when neither is given', async () => {
     await wodService.list({});
-    expect(wodModel.listSummaries).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 50, offset: 0 })
-    );
+    expect(wodModel.listSummaries).toHaveBeenCalledWith(expect.objectContaining({ limit: 50, offset: 0 }));
   });
 
   it('caps limit at 100 even if a larger value is requested', async () => {
@@ -298,9 +296,7 @@ describe('wodService.list - pagination', () => {
 
   it('passes through a valid limit/offset', async () => {
     await wodService.list({ limit: '10', offset: '20' });
-    expect(wodModel.listSummaries).toHaveBeenCalledWith(
-      expect.objectContaining({ limit: 10, offset: 20 })
-    );
+    expect(wodModel.listSummaries).toHaveBeenCalledWith(expect.objectContaining({ limit: 10, offset: 20 }));
   });
 
   it('rejects a non-numeric limit', async () => {
